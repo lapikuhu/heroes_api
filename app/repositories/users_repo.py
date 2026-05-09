@@ -1,4 +1,6 @@
 
+from click.core import F
+
 from models.users import User
 from sqlmodel import Session, select
 
@@ -33,3 +35,6 @@ def get_user_roles_by_id(user_id: int, session: Session) -> list[str] | None:
         return None
     return [role.name for role in user.roles]
 
+def is_user_admin(user_id: int, session: Session) -> bool | None:
+    user = session.get(User, user_id)
+    return user.is_admin if user else None

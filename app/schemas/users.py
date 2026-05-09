@@ -26,27 +26,31 @@ class UserGetById(SQLModel):
 class UserGetRolesById(SQLModel):
     id: int = Field(index=True, title="ID of the user", gt=0)
 
+class UserCreds(SQLModel):
+    username: str = Field(index=True, title="Username of the user", min_length=3)
+    password: str = Field(index=True, title="Password of the user", min_length=3)
+
 ### ----------------------------- RESPONSE MODELS------------------------- ###
 class UserRead(SQLModel):
     """Response model for reading user data"""
-    id: int
-    username: str
-    is_admin: bool
-    roles: list[str]
+    id: int = Field(index=True, title="ID of the user", gt=0)
+    username: str = Field(index=True, title="Username of the user", min_length=3)
+    is_admin: bool = Field(index=True, title="Is admin")
+    roles: list[str] = Field(default_factory=list, title="List of roles for the user")
 
 class UserCreatedResponse(SQLModel):
     """Response model for user creation"""
-    ok: bool
-    user: UserRead
+    ok: bool = Field(default=True, title="Whether the user was created successfully")
+    user: UserRead = Field(title="The created user")
 
 class UserRolesResponse(SQLModel):
     """Response model for getting user roles"""
-    roles: list[str]
+    roles: list[str] = Field(default_factory=list, title="List of roles for the user")
 
-class IsAdminResponse(SQLModel):
+class UserIsAdminResponse(SQLModel):
     """Response model for checking if user is admin"""
-    is_admin: bool
+    is_admin: bool = Field(index=True, title="Is admin")
 
-class IsNotAdminResponse(SQLModel):
+class UserIsNotAdminResponse(SQLModel):
     """Response model for checking if user is not admin"""
-    is_not_admin: bool
+    is_not_admin: bool = Field(index=True, title="Is not admin")
