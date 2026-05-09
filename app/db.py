@@ -1,6 +1,8 @@
-from sqlmodel import SQLModel, create_engine, Session
-import config
+from sqlmodel import SQLModel, create_engine, Session, select
+from dependencies import User
+from security import get_password_hash
 from config import DATABASE_URL, SECRET_KEY, ALGORITHM
+from config import ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 from sqlalchemy import create_engine as sa_create_engine, text
 
 
@@ -27,6 +29,23 @@ engine = create_engine(DATABASE_URL,
                        pool_size=20, # Max number of connections in the pool
                        max_overflow=2) # Max number of connections that can be created beyond the pool_size
 
+def create_admin_if_not_exists():
+    """
+    Creates an admin user if it doesn't exist. This is useful for testing and initial setup.
+    In a production environment, you would want to handle user creation more securely.
+    """
+    with Session(engine) as session:
+        admin_user = session.exec(select(User).where(User.is_admin == True)).first()
+        if not admin_user:
+            admin_user = User(
+                username=ADMIN_USERNAME,
+                email=ADMIN_EMAIL,
+                hashed_password=get_password_hash(ADMIN_PASSWORD),
+                is_admin=True
+            )
+            session.add(admin_user)
+            session.commit()
+
 def create_db_and_tables():
     """
     Adds the tables and creates the database if they don't exist.
@@ -34,7 +53,10 @@ def create_db_and_tables():
     it's better to use a tool like Alembic for that.
     """
     create_database_if_not_exists()
+    create_admin_if_not_exists()
     SQLModel.metadata.create_all(engine)
+
+
 
 def get_session():
     """

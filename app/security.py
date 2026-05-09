@@ -23,3 +23,6 @@ def create_access_token(sub: str) -> str:
 
 def decode_access_token(token: str) -> dict:
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+def  get_password_hash(password: str) -> str:
+    return hash_password(password)

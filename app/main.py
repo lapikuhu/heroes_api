@@ -1,15 +1,11 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
- 
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select
 
-from web.routes import users, heroes
-
-
-#local imports
-from db import create_db_and_tables, get_session
-from models.heroes import Hero
+# Local imports
+from web.routes import users, heroes, missions
+from db import create_db_and_tables
 
 """Lifespans handlers are a powerful feature in FastAPI that allow you to define 
 setup and teardown logic for your application."""
@@ -29,3 +25,4 @@ app = FastAPI(title="Heroes Fast API app", lifespan=lifespan, tags=["app"])
 # Register the routers
 app.include_router(users.router)
 app.include_router(heroes.router)
+app.include_router(missions.router)

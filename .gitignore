@@ -6,6 +6,10 @@ venv/
 
 # Python cache files
 __pycache__/
+app/__pycache__/
+**/__pycache__
+*.pyc
+**/*.pyc
 
 # secret files
 .env

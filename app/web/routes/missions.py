@@ -1,5 +1,3 @@
-from re import A
-
 from fastapi import APIRouter, HTTPException
 
 from dependencies import SessionDep
