@@ -3,14 +3,13 @@ from typing import Annotated
  
 from fastapi import FastAPI, Depends, HTTPException
 from sqlmodel import Session, select
-from websockets.version import tag
- 
-from db import create_db_and_tables, get_session
-from models import Hero, HeroUpdate
+
+from web.routes import users, heroes
+
 
 #local imports
 from db import create_db_and_tables, get_session
-from models import Hero, HeroUpdate
+from models.heroes import Hero
 
 """Lifespans handlers are a powerful feature in FastAPI that allow you to define 
 setup and teardown logic for your application."""
@@ -28,3 +27,5 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Heroes Fast API app", lifespan=lifespan, tags=["app"])
 
 # Register the routers
+app.include_router(users.router)
+app.include_router(heroes.router)

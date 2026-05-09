@@ -1,10 +1,9 @@
 
-from models import User
+from models.users import User
 from sqlmodel import Session, select
-from security import hash_password
-from dependencies import SessionDep
 
-def create_user(user: User, session: SessionDep) -> User:
+
+def create_user(user: User, session: Session) -> User:
     try:
         session.add(user)
         session.commit()
@@ -14,21 +13,21 @@ def create_user(user: User, session: SessionDep) -> User:
         session.rollback()
         raise
 
-def get_user_by_token(token: str, session: SessionDep) -> User | None:
+def get_user_by_token(token: str, session: Session) -> User | None:
     # Repo get user by token
     return session.exec(select(User).where(User.token == token)).first()
 
-def get_user_by_username(username: str, session: SessionDep) -> User | None:
+def get_user_by_username(username: str, session: Session) -> User | None:
     # Repo get user by username
     return session.exec(select(User).where(User.username == username)).first()
 
-def get_user_by_id(user_id: int, session: SessionDep) -> User | None:
+def get_user_by_id(user_id: int, session: Session) -> User | None:
     return session.get(User, user_id)
 
-def is_existing_user(username: str, session: SessionDep) -> bool:
+def is_existing_user(username: str, session: Session) -> bool:
     return session.exec(select(User).where(User.username == username)).first() is not None  
 
-def get_user_roles_by_id(user_id: int, session: SessionDep) -> list[str] | None:
+def get_user_roles_by_id(user_id: int, session: Session) -> list[str] | None:
     user = session.get(User, user_id)
     if user is None:
         return None

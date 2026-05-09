@@ -1,5 +1,5 @@
-from sqlmodel import Session, exec
-from models import Hero
+from sqlmodel import Session
+from models.heroes import Hero
 
 def create_hero(hero: Hero, session: Session) -> Hero:
     """ Write a hero to the database and return the created hero with its ID. 

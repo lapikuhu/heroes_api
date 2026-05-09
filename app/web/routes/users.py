@@ -40,3 +40,19 @@ def get_user_by_username(username: str, session: SessionDep):
         username=user.username,
         is_admin=user.is_admin,
     )
+
+@router.patch("/{user_id}", tags=["users"], response_model=UserRead, status_code=200)
+def update_user(user_id: int, user_data: UserCreate, session: SessionDep):
+    try:
+        user = users_service.update_user_service(user_id, user_data, session)
+        return UserRead(
+            id=user.id,
+            username=user.username,
+            is_admin=user.is_admin,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@router.delete("/{user_id}", tags=["users"], status_code=204)
+def delete_user(user_id: int, session: SessionDep):
+    users_service.delete_user_service(user_id, session)
