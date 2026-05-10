@@ -1,4 +1,4 @@
-from sqlmodel import Field, Relationship, SQLModel, default
+from sqlmodel import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING: # Avoid circular imports by only importing Mission for type checking

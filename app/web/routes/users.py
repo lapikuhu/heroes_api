@@ -3,17 +3,19 @@
 # business logic and return responses. Scehmas are used for request validation 
 # and response models. Repositories are NEVER called directly by routes, only by 
 # services.
-# NOTE: User services are explicitly permission-awawre for deeper defense.
+# NOTE 1: User services are explicitly permission-aware for deeper defense.
 # Any changes in the routes have to be duplicated in # the service layer, so there are
 # no mismatches between routes and services.
-
+# NOTE 2: routers still use dependencies markers for authentication and
+# authorization -> overkill (dependency injection takes care of this), but
+# kept for consistency and clarity of the routes.
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
 # Local imports
 from models import user_roles
-from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user
+from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user, get_current_user
 from schemas.users import UserCreate, UserRead, UserCreatedResponse
 
 from services import users_service
@@ -69,7 +71,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
 ###--------------------------- GET USER INFO ----------------------- ###
 
 @router.get("/me", tags=["users"], 
-            dependencies=[Depends(CurrentUser)], # authenticated users only, throws 401 if not authenticated 
+            dependencies=[Depends(get_current_user)], # authenticated users only, throws 401 if not authenticated 
             response_model=UserRead, status_code=200)
 def get_me_user(current_user: CurrentUser):
     """Get the current authenticated user's information.
@@ -87,7 +89,10 @@ def get_me_user(current_user: CurrentUser):
 
 ###------------------------ GET USER INFO BY USERNAME --------------------- ###
 
-@router.get("/{username}", tags=["users"], response_model=UserRead, status_code=200)
+@router.get("/{username}", 
+            tags=["users"], 
+            dependencies=[Depends(get_admin_user)], # Admins only, throws 403 if not admin
+            response_model=UserRead, status_code=200)
 def get_user_by_username(username: str, session: SessionDep):
     """Get user information by username.
     Args:

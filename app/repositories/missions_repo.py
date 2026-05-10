@@ -32,6 +32,16 @@ def get_mission(mission_id: int, session: Session) -> Mission | None:
     """
     return session.get(Mission, mission_id)
 
+def get_all_missions(session: Session) -> list[Mission]:
+    """ Retrieve all missions from the database. 
+    Args:
+        session (Session): The database session to use for the operation.
+
+    Returns:
+        list[Mission]: A list of all missions in the database.
+    """
+    return session.exec(select(Mission)).all()
+
 def update_mission(mission_id: int, mission_data: MissionUpdate, session: Session) -> Mission | None:
     """ Update an existing mission in the database. 
     Args:

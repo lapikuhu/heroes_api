@@ -2,7 +2,7 @@
 # Business logic for handling heroes-related operations.
 # Invoke repository functions to interact with the database and perform 
 # necessary checks or transformations.
-from httpx import get
+# Shallow defence: access control is handled at the route level.
 
 from models.users import User
 from models.heroes import Hero
@@ -10,6 +10,7 @@ from schemas.heroes import HeroCreate, HeroUpdate
 from sqlmodel import Session
 from repositories import heroes_repo
 
+### ------------------------- CREATE HERO -------------------------- ###
 
 def create_hero(hero_data: HeroCreate, session: Session) -> Hero:
     if heroes_repo.is_existing_hero(hero_data.name, session):

@@ -15,6 +15,9 @@ def create_mission(mission_data: MissionCreate, session: Session) -> Mission:
     mission = missions_repo.create_mission(mission, session=session)
     return mission
 
+def get_all_missions(session: Session) -> list[Mission]:
+    return missions_repo.get_all_missions(session=session)
+
 def get_mission_by_id(mission_id: int, session: Session) -> Mission | None:
     return missions_repo.get_mission(mission_id, session=session)
 

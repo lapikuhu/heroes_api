@@ -3,7 +3,9 @@
 # They are only called by repositories and services, not directly by routes.
 
 from sqlmodel import Field, Relationship, SQLModel
-from .user_roles import Role
+from typing import TYPE_CHECKING
+if TYPE_CHECKING: # Avoid circular imports by only importing Role for type checking
+    from .user_roles import Role
 
 class User(SQLModel, table=True):
     id : int | None = Field(default=None, primary_key=True)
