@@ -8,12 +8,20 @@ from security import decode_access_token
 
 
 def get_current_user(token: str, session: Session) -> User:
+    """Get the current authenticated user based on the provided JWT token.
+    Args:
+        token (str): The JWT token provided in the request header.
+        session (Session): Database session for querying user information.
+    Returns:
+        User: The authenticated user corresponding to the token.
+    Raises:
+        HTTPException: If the token is invalid, expired, or if the user cannot be found
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
     try:
         payload = decode_access_token(token)
         username: str | None = payload.get("sub")

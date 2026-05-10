@@ -57,8 +57,9 @@ def user_login_service(username: str, password: str, session: Session) -> tuple[
     user = users_repo.get_user_by_username(username, session)
     if user and verify_password(password, user.hashed_password):
         # Generate token (this is a placeholder, implement actual token generation)
-        access_token = create_access_token({"sub": username})
+        access_token = create_access_token(username)
         token_type = "bearer"
         return access_token, token_type
     else:
-        raise ValueError("Invalid username or password")            
+        raise ValueError("Invalid username or password")          
+

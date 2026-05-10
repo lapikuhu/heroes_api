@@ -1,8 +1,10 @@
 from sqlmodel import SQLModel, create_engine, Session, select
+from models import user_roles
 from dependencies import User
 from security import get_password_hash
 from config import DATABASE_URL, SECRET_KEY, ALGORITHM
 from config import ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
+from config import FIXED_ROLES
 from sqlalchemy import create_engine as sa_create_engine, text
 
 
@@ -29,6 +31,23 @@ engine = create_engine(DATABASE_URL,
                        pool_size=20, # Max number of connections in the pool
                        max_overflow=2) # Max number of connections that can be created beyond the pool_size
 
+from models.user_roles import Role
+
+def seed_roles_if_not_exist():
+    """Seeds the database with fixed roles if they don't already exist. 
+    This is useful for testing and initial setup.
+    Args:
+        None
+    Returns:
+        None
+    """
+    with Session(engine) as session:
+        for role_name in FIXED_ROLES:
+            exists = session.exec(select(Role).where(Role.name == role_name)).first()
+            if not exists:
+                session.add(Role(name=role_name))
+        session.commit()
+
 def create_admin_if_not_exists():
     """
     Creates an admin user if it doesn't exist. This is useful for testing and initial setup.
@@ -41,7 +60,8 @@ def create_admin_if_not_exists():
                 username=ADMIN_USERNAME,
                 email=ADMIN_EMAIL,
                 hashed_password=get_password_hash(ADMIN_PASSWORD),
-                is_admin=True
+                is_admin=True,
+                user_roles=[user_roles.Role(name="admin")]
             )
             session.add(admin_user)
             session.commit()

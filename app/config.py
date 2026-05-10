@@ -20,3 +20,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+# Fixed roles that can be assigned to users
+FIXED_ROLES = ["admin", "editor", "viewer"]
