@@ -16,7 +16,7 @@ router = APIRouter(prefix="/missions", tags=["missions"])
              dependencies=[Depends(get_current_user)], # Authenticated users can create missions, throws 401 if not authenticated
              response_model=MissionReadById, 
              status_code=201)
-def create_mission(mission_data: MissionCreate, session: SessionDep):
+async def create_mission(mission_data: MissionCreate, session: SessionDep):
     """Create a new mission. Requires authentication.
     Args:
         mission_data (MissionCreate): The data for the mission to be created.
@@ -27,9 +27,9 @@ def create_mission(mission_data: MissionCreate, session: SessionDep):
         HTTPException: If the hero specified in the mission data does not exist (404).
         HTTPException: If the user is not authenticated (401) or if there is an error during mission creation (400).
     """
-    if mission_data.hero_id is not None and not get_hero_by_id(mission_data.hero_id, session):
+    if mission_data.hero_id is not None and not await get_hero_by_id(mission_data.hero_id, session):
         raise HTTPException(status_code=404, detail="Hero not found")
-    return missions_service.create_mission(mission_data, session)
+    return await missions_service.create_mission(mission_data, session)
 
 ### ----------------------- READ ALL MISSIONS ---------------------- ###
 
@@ -37,7 +37,7 @@ def create_mission(mission_data: MissionCreate, session: SessionDep):
             dependencies=None, # Public endpoint, no authentication required
             response_model=list[MissionReadById], 
             status_code=200)
-def read_all_missions(session: SessionDep):
+async def read_all_missions(session: SessionDep):
     """Retrieve all missions. Public endpoint, no authentication required.
     Args:
         session (SessionDep): The database session to use for the operation.
@@ -45,7 +45,7 @@ def read_all_missions(session: SessionDep):
         list[MissionReadById]: A list of all missions.
     Raises:        HTTPException: If there is an error during retrieval of missions (400).
     """
-    return missions_service.get_all_missions(session)
+    return await missions_service.get_all_missions(session)
 
 ### ------------------------- READ MISSION ------------------------- ###
 
@@ -54,8 +54,8 @@ def read_all_missions(session: SessionDep):
             tags=['missions'], 
             response_model=MissionReadById, 
             status_code=200)
-def read_mission(mission_id: int, session: SessionDep):
-    mission = missions_service.get_mission_by_id(mission_id, session)
+async def read_mission(mission_id: int, session: SessionDep):
+    mission = await missions_service.get_mission_by_id(mission_id, session)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     return mission
@@ -66,8 +66,8 @@ def read_mission(mission_id: int, session: SessionDep):
               dependencies=[Depends(get_current_user)], # Authenticated users can update missions, throws 401 if not authenticated
               response_model=MissionReadById, 
               status_code=200)
-def update_mission(mission_id: int, mission_update: MissionUpdate, session: SessionDep):
-    mission = missions_service.update_mission_by_id(mission_id, mission_update, session)
+async def update_mission(mission_id: int, mission_update: MissionUpdate, session: SessionDep):
+    mission = await missions_service.update_mission_by_id(mission_id, mission_update, session)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     return mission
@@ -79,8 +79,8 @@ def update_mission(mission_id: int, mission_update: MissionUpdate, session: Sess
                dependencies=[Depends(get_admin_user)], # Only admins can delete missions, throws 403 if not authorized
                response_model=None, 
                status_code=204)
-def delete_mission(mission_id: int, session: SessionDep):
-    success = missions_service.delete_mission_by_id(mission_id, session)
+async def delete_mission(mission_id: int, session: SessionDep):
+    success = await missions_service.delete_mission_by_id(mission_id, session)
     if not success:
         raise HTTPException(status_code=404, detail="Mission not found")
     return {"detail": "Mission deleted successfully"}

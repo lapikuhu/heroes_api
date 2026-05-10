@@ -1,8 +1,9 @@
-from sqlmodel import Session, select
+from sqlmodel import select
+from db import AsyncSession as Session
 from models.missions import Mission
 from schemas.missions import MissionCreate, MissionUpdate
 
-def create_mission(mission: Mission, session: Session) -> Mission:
+async def create_mission(mission: Mission, session: Session) -> Mission:
     """ Write a mission to the database and return the created mission with its ID. 
     Args:
         mission (Mission): The mission data to be created.
@@ -15,14 +16,14 @@ def create_mission(mission: Mission, session: Session) -> Mission:
     """
     try:
         session.add(mission)
-        session.commit()
-        session.refresh(mission)
+        await session.commit()
+        await session.refresh(mission)
         return mission
     except Exception:
-        session.rollback()
+        await session.rollback()
         raise
 
-def get_mission(mission_id: int, session: Session) -> Mission | None:
+async def get_mission(mission_id: int, session: Session) -> Mission | None:
     """ Retrieve a mission from the database by its ID. 
     Args:
         mission_id (int): The ID of the mission to retrieve.
@@ -30,9 +31,9 @@ def get_mission(mission_id: int, session: Session) -> Mission | None:
     Returns:
         Mission | None: The retrieved mission if found, otherwise None.
     """
-    return session.get(Mission, mission_id)
+    return await session.get(Mission, mission_id)
 
-def get_all_missions(session: Session) -> list[Mission]:
+async def get_all_missions(session: Session) -> list[Mission]:
     """ Retrieve all missions from the database. 
     Args:
         session (Session): The database session to use for the operation.
@@ -40,9 +41,9 @@ def get_all_missions(session: Session) -> list[Mission]:
     Returns:
         list[Mission]: A list of all missions in the database.
     """
-    return session.exec(select(Mission)).all()
+    return (await session.exec(select(Mission))).all()
 
-def update_mission(mission_id: int, mission_data: MissionUpdate, session: Session) -> Mission | None:
+async def update_mission(mission_id: int, mission_data: MissionUpdate, session: Session) -> Mission | None:
     """ Update an existing mission in the database. 
     Args:
         mission_id (int): The ID of the mission to update.
@@ -55,19 +56,19 @@ def update_mission(mission_id: int, mission_data: MissionUpdate, session: Sessio
         be rolled back and the exception will be propagated.
     """
     try:
-        mission = session.get(Mission, mission_id)
+        mission = await session.get(Mission, mission_id)
         if not mission:
             return None
         for key, value in mission_data.model_dump(exclude_unset=True).items():
             setattr(mission, key, value)
-        session.commit()
-        session.refresh(mission)
+        await session.commit()
+        await session.refresh(mission)
         return mission
     except Exception:
-        session.rollback()
+        await session.rollback()
         raise
 
-def delete_mission(mission_id: int, session: Session) -> bool:
+async def delete_mission(mission_id: int, session: Session) -> bool:
     """ Delete a mission from the database by its ID. 
     Args:
         mission_id (int): The ID of the mission to delete.
@@ -79,17 +80,17 @@ def delete_mission(mission_id: int, session: Session) -> bool:
         be rolled back and the exception will be propagated.
     """
     try:
-        mission = session.get(Mission, mission_id)
+        mission = await session.get(Mission, mission_id)
         if not mission:
             return False
-        session.delete(mission)
-        session.commit()
+        await session.delete(mission)
+        await session.commit()
         return True
     except Exception:
-        session.rollback()
+        await session.rollback()
         raise
 
-def look_up_mission_by_hero_id(hero_id: int, session: Session) -> list[Mission]:
+async def look_up_mission_by_hero_id(hero_id: int, session: Session) -> list[Mission]:
     """ Look up missions assigned to a specific hero by the hero's ID. 
     Args:
         hero_id (int): The ID of the hero whose missions to look up.
@@ -97,4 +98,4 @@ def look_up_mission_by_hero_id(hero_id: int, session: Session) -> list[Mission]:
     Returns:
         list[Mission]: A list of missions assigned to the specified hero.
     """
-    return session.exec(select(Mission).where(Mission.hero_id == hero_id)).all()
+    return (await session.exec(select(Mission).where(Mission.hero_id == hero_id))).all()

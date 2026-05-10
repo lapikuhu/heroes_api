@@ -4,8 +4,6 @@ from sqlmodel import select
 
 from db import AsyncSession
 
-
-
 async def create_user(user: User, session: AsyncSession) -> User:
     try:
         session.add(user)
