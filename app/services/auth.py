@@ -1,17 +1,17 @@
 from fastapi import HTTPException, status
 from jose import JWTError
-from sqlmodel import Session
+from db import AsyncSession
 
 from models.users import User
 from repositories import users_repo
 from security import decode_access_token
 
 
-def get_current_user(token: str, session: Session) -> User:
+async def get_current_user(token: str, session: AsyncSession) -> User:
     """Get the current authenticated user based on the provided JWT token.
     Args:
         token (str): The JWT token provided in the request header.
-        session (Session): Database session for querying user information.
+        session (AsyncSession): Database session for querying user information.
     Returns:
         User: The authenticated user corresponding to the token.
     Raises:
@@ -30,7 +30,7 @@ def get_current_user(token: str, session: Session) -> User:
     except JWTError:
         raise credentials_exception
 
-    user = users_repo.get_user_by_username(username, session)
+    user = await users_repo.get_user_by_username(username, session)
     if user is None:
         raise credentials_exception
     return user

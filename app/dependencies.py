@@ -1,18 +1,18 @@
 from sqlmodel import Session
 from models.users import User
 from services import auth
-from db import get_session
+from db import AsyncSession, get_session
 from security import oauth2_scheme
 from typing import Annotated
 from fastapi import Depends, HTTPException
 
 # Dependency for getting a database session
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenDep = Annotated[str, Depends(oauth2_scheme)]
 
 
-def get_current_user(token: TokenDep, session: SessionDep) -> User:
-    user = auth.get_current_user(token, session)
+async def get_current_user(token: TokenDep, session: SessionDep) -> User:
+    user = await auth.get_current_user(token, session)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     return user

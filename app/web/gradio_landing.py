@@ -12,11 +12,12 @@ async def login_against_backend(app: FastAPI, username: str, password: str) -> t
     if not clean_username or not password:
         return False, "Enter both username and password."
 
+    # Use httpx with ASGITransport to send a request to the FastAPI app without needing it to be running as a server.
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://gradio.local") as client:
         response = await client.post(
-            "/users/login",
-            data={"username": clean_username, "password": password},
+            "/users/login", # login route defined in web/routes/users.py
+            data={"username": clean_username, "password": password}, # payload for the login route
         )
 
     if response.is_success:

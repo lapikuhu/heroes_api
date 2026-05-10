@@ -30,9 +30,9 @@ router = APIRouter(prefix="/users", tags=["users"])
              response_model=UserCreatedResponse, 
              dependencies=[Depends(get_admin_user)], # Only admins can create users, throws 403 if not admin
              status_code=201)
-def create_user(user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
+async def create_user(user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
     try:
-        user = users_service.create_user_service(user_data, admin_user, session)
+        user = await users_service.create_user_service(user_data, admin_user, session)
         return UserCreatedResponse(
             ok=True,
             user=UserRead(
@@ -60,7 +60,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
         HTTPException: If authentication fails with status code 400 and error message.    
     """
     try:
-        access_token, token_type = users_service.user_login_service(
+        access_token, token_type = await users_service.user_login_service(
             form_data.username, 
             form_data.password, 
             session=session)
@@ -73,7 +73,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
 @router.get("/me", tags=["users"], 
             dependencies=[Depends(get_current_user)], # authenticated users only, throws 401 if not authenticated 
             response_model=UserRead, status_code=200)
-def get_me_user(current_user: CurrentUser):
+async def get_me_user(current_user: CurrentUser):
     """Get the current authenticated user's information.
     Args:
         current_user (CurrentUser): The currently authenticated user, provided by dependency injection.
@@ -93,7 +93,7 @@ def get_me_user(current_user: CurrentUser):
             tags=["users"], 
             dependencies=[Depends(get_admin_user)], # Admins only, throws 403 if not admin
             response_model=UserRead, status_code=200)
-def get_user_by_username(username: str, session: SessionDep):
+async def get_user_by_username(username: str, session: SessionDep):
     """Get user information by username.
     Args:
         username (str): The username of the user to retrieve.
@@ -103,7 +103,7 @@ def get_user_by_username(username: str, session: SessionDep):
     Raises:
         HTTPException: If the user is not found with status code 404.
     """
-    user = users_service.get_user_by_username_service(username, session)
+    user = await users_service.get_user_by_username_service(username, session)
 
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -122,7 +122,7 @@ def get_user_by_username(username: str, session: SessionDep):
               response_model=UserRead, 
               dependencies=[Depends(get_admin_user)], # Only admins can update users, throws 403 if not admin
               status_code=200)
-def update_user(user_id: int, user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
+async def update_user(user_id: int, user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
     """Update user information. Only admins can update users.
     Args:
         user_id (int): The ID of the user to update.
@@ -135,7 +135,7 @@ def update_user(user_id: int, user_data: UserCreate, session: SessionDep, admin_
         HTTPException: If the user is not found with status code 404 or if validation fails with status code 400.  
     """
     try:
-        user_update = users_service.update_user_service(user_id, user_data, admin_user, session)
+        user_update = await users_service.update_user_service(user_id, user_data, admin_user, session)
         return UserRead(
             id=user_update.id,
             username=user_update.username,
@@ -151,7 +151,7 @@ def update_user(user_id: int, user_data: UserCreate, session: SessionDep, admin_
                tags=["users"], 
                dependencies=[Depends(get_admin_user)], # Only admins can delete users, throws 403 if not admin
                status_code=204)
-def delete_user(user_id: int, session: SessionDep, admin_user: AdminUser):
+async def delete_user(user_id: int, session: SessionDep, admin_user: AdminUser):
     """Delete a user. Only admins can delete users.
     Args:
         user_id (int): The ID of the user to delete.
@@ -160,4 +160,4 @@ def delete_user(user_id: int, session: SessionDep, admin_user: AdminUser):
     Raises:
         HTTPException: If the user is not found with status code 404.
     """
-    users_service.delete_user_service(user_id, admin_user, session)
+    await users_service.delete_user_service(user_id, admin_user, session)
