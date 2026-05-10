@@ -29,3 +29,6 @@ def update_mission_by_id(mission_id: int, mission_update_data: MissionUpdate, se
 
 def delete_mission_by_id(mission_id: int, session: Session) -> bool:
     return missions_repo.delete_mission(mission_id, session=session)
+
+def get_missions_by_hero_id(hero_id: int, session: Session) -> list[Mission]:
+    return missions_repo.get_missions_by_hero_id(hero_id, session=session)

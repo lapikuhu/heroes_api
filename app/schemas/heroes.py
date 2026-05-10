@@ -1,6 +1,5 @@
 """Schemas are what is sent and received in the API requests and responses."""
 from sqlmodel import SQLModel
-from typing import Optional
 from pydantic import Field
 
 class HeroCreate(SQLModel):
@@ -20,3 +19,7 @@ class HeroRead(SQLModel):
     name: str
     power: str
     age: int | None = None
+    mission_ids: list[int] = Field(default_factory=list, title="List of mission IDs assigned to the hero")
+
+class HeroMissionIDsResponse(SQLModel):
+    mission_ids: list[int] = Field(default_factory=list, title="List of mission IDs assigned to the hero")

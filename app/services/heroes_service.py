@@ -2,6 +2,8 @@
 # Business logic for handling heroes-related operations.
 # Invoke repository functions to interact with the database and perform 
 # necessary checks or transformations.
+from httpx import get
+
 from models.users import User
 from models.heroes import Hero
 from schemas.heroes import HeroCreate, HeroUpdate
@@ -28,5 +30,22 @@ def update_hero_by_id(hero_id: int, hero_data: HeroUpdate, session: Session) -> 
 def get_all_heroes_service(session: Session) -> list[Hero]:
     return heroes_repo.get_all_heroes(session)
 
+def get_hero_mission_ids_service(hero_id: int, session: Session) -> list[int] | None:
+    """Service function to get the list of mission IDs assigned to a hero by their ID.
+    Args:
+        hero_id (int): The ID of the hero for whom to retrieve mission IDs.
+        session (Session): The database session to use for the operation.
+    Returns:
+        list[int] | None: A list of mission IDs assigned to the hero, or None if the hero does not exist.
+    """
+    return heroes_repo.get_hero_mission_ids(hero_id, session)
+
 def delete_hero_by_id(hero_id: int, session: Session) -> bool:
+    """Delete a hero by ID. Returns True if deletion was successful, False otherwise.
+    Heroes with associated missions cannot be deleted.
+    """
+    if get_hero_by_id(hero_id, session) is None:
+        raise ValueError("Hero not found")
+    if len(get_hero_mission_ids_service(hero_id, session) or []) > 0:
+        raise ValueError("Cannot delete hero with assigned missions")
     return heroes_repo.delete_hero(hero_id, session)

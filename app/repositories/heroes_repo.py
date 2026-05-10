@@ -52,6 +52,12 @@ def update_hero(hero_id: int, hero_data: Hero, session: Session) -> Hero | None:
 def get_all_heroes(session: Session) -> list[Hero]:
     return session.exec(Hero).all()
 
+def get_hero_mission_ids(hero_id: int, session: Session) -> list[int] | None:
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        return None
+    return [mission.id for mission in hero.missions]
+
 def delete_hero(hero_id: int, session: Session) -> bool:
     hero = session.get(Hero, hero_id)
     if not hero:

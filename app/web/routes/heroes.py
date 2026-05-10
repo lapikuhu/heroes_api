@@ -37,7 +37,10 @@ def update_hero(hero_id: int, hero_update: HeroUpdate, session: SessionDep):
                response_model=None, 
                status_code=204)
 def delete_hero(hero_id: int, session: SessionDep):
+    user_success = heroes_service.get_hero_by_id(hero_id, session)
+    if not user_success:
+        raise HTTPException(status_code=404, detail="Hero not found")
     success = heroes_service.delete_hero_by_id(hero_id, session)
     if not success:
-        raise HTTPException(status_code=404, detail="Hero not found")
+        raise HTTPException(status_code=400, detail="Cannot delete hero with assigned missions")
     return {"detail": "Hero deleted successfully"}
