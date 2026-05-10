@@ -2,12 +2,22 @@
 # Schemas are used for validation in services and for request/response models in routes. 
 # They are not used for database models.
 from sqlmodel import SQLModel, Field
+from pydantic import field_validator
+from config import FIXED_ROLES
 
 class UserCreate(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)
     password: str = Field(index=True, title="Password of the user", min_length=3)
     is_admin: bool = Field(default=False, index=True, title="Is admin")
     roles: list[str] = Field(default_factory=list, title="List of roles for the user")
+    
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: list[str]) -> list[str]:
+        invalid = set(v) - set(FIXED_ROLES)
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+        return v()
 
 class UserDelete(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)
@@ -37,6 +47,13 @@ class UserRead(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)
     is_admin: bool = Field(index=True, title="Is admin")
     roles: list[str] = Field(default_factory=list, title="List of roles for the user")
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: list[str]) -> list[str]:
+        invalid = set(v) - set(FIXED_ROLES)
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+        return v()
 
 class UserCreatedResponse(SQLModel):
     """Response model for user creation"""
@@ -46,6 +63,13 @@ class UserCreatedResponse(SQLModel):
 class UserRolesResponse(SQLModel):
     """Response model for getting user roles"""
     roles: list[str] = Field(default_factory=list, title="List of roles for the user")
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: list[str]) -> list[str]:
+        invalid = set(v) - set(FIXED_ROLES)
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+        return v()
 
 class UserIsAdminResponse(SQLModel):
     """Response model for checking if user is admin"""

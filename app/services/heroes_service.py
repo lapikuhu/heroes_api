@@ -2,6 +2,7 @@
 # Business logic for handling heroes-related operations.
 # Invoke repository functions to interact with the database and perform 
 # necessary checks or transformations.
+from models.users import User
 from models.heroes import Hero
 from schemas.heroes import HeroCreate, HeroUpdate
 from sqlmodel import Session

@@ -15,6 +15,24 @@ def create_user(user: User, session: Session) -> User:
         session.rollback()
         raise
 
+def update_user(user: User, session: Session) -> User:
+    try:
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+    except Exception:
+        session.rollback()
+        raise
+
+def delete_user(user: User, session: Session) -> None:
+    try:
+        session.delete(user)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
 def get_user_by_token(token: str, session: Session) -> User | None:
     # Repo get user by token
     return session.exec(select(User).where(User.token == token)).first()

@@ -3,6 +3,10 @@
 # business logic and return responses. Scehmas are used for request validation 
 # and response models. Repositories are NEVER called directly by routes, only by 
 # services.
+# NOTE: User services are explicitly permission-awawre for deeper defense.
+# Any changes in the routes have to be duplicated in # the service layer, so there are
+# no mismatches between routes and services.
+
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
@@ -10,7 +14,8 @@ from typing import Annotated
 # Local imports
 from models import user_roles
 from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user
-from schemas.users import UserCreate, UserRead, UserCreatedResponse, UserCreds
+from schemas.users import UserCreate, UserRead, UserCreatedResponse
+
 from services import users_service
 
 # Define the router for user-related endpoints
