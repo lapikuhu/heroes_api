@@ -13,3 +13,6 @@ app/__pycache__/
 
 # secret files
 .env
+
+# plans
+plans/
