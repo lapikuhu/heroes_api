@@ -12,7 +12,7 @@ setup and teardown logic for your application."""
 @asynccontextmanager
 # async context manager for lifespan allows us to run async code during startup and shutdown
 async def lifespan(app: FastAPI):
-    await create_db_and_tables() # setup: create database and tables
+    await create_db_and_tables() # setup: seed startup data after Alembic migrations
     
     print("Database setup complete. [OK]")
 

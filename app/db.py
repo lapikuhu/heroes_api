@@ -1,8 +1,7 @@
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import create_engine as sa_create_engine, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel, select
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from models import user_roles
@@ -12,24 +11,6 @@ from security import get_password_hash
 from config import DATABASE_URL
 from config import ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 from config import FIXED_ROLES
-
-
-def create_database_if_not_exists():
-    """Checks if the database exists, and creates it if it doesn't. 
-    Args: 
-        None
-    Returns:
-        None
-    """
-    default_url = DATABASE_URL.rsplit("/", 1)[0] + "/postgres"
-    tmp_engine = sa_create_engine(default_url, isolation_level="AUTOCOMMIT")
-    with tmp_engine.connect() as conn:
-        exists = conn.execute(
-            text("SELECT 1 FROM pg_database WHERE datname = 'heroes_db'")
-        ).fetchone()
-        if not exists:
-            conn.execute(text("CREATE DATABASE heroes_db"))
-    tmp_engine.dispose()
 
 
 ASYNC_DATABASE_URL = DATABASE_URL.replace(
@@ -50,7 +31,6 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
-
 
 async def seed_roles_if_not_exist():
     """Seeds the database with fixed roles if they don't already exist. 
@@ -88,16 +68,10 @@ async def create_admin_if_not_exists():
             session.add(admin_user)
             await session.commit()
 
-
 async def create_db_and_tables():
     """
-    Adds the tables and creates the database if they don't exist.
-    In theory it can allow for revisions and migrations, but in practice
-    it's better to use a tool like Alembic for that.
+    Seeds startup data after Alembic has created and migrated the schema.
     """
-    create_database_if_not_exists()
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
     await seed_roles_if_not_exist()
     await create_admin_if_not_exists()
 

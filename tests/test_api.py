@@ -29,7 +29,10 @@ def test_gradio_login_helper_posts_to_existing_login_route() -> None:
 def test_homepage_and_docs_remain_available(monkeypatch) -> None:
 	import main
 
-	monkeypatch.setattr(main, "create_db_and_tables", lambda: None)
+	async def skip_startup_seed() -> None:
+		return None
+
+	monkeypatch.setattr(main, "create_db_and_tables", skip_startup_seed)
 
 	with TestClient(main.app) as client:
 		home_response = client.get("/")
