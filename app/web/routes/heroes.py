@@ -14,7 +14,7 @@ router = APIRouter(prefix="/heroes", tags=["heroes"])
              response_model=HeroRead, 
              status_code=201)
 async def create_hero(hero: HeroCreate, session: SessionDep):
-    return await heroes_service.create_hero_service(hero, session)
+    return await heroes_service.create_hero(hero, session)
 
 ### --------------------- LIST OF ALL HEROES ----------------------- ###
 

@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
+from dependencies import get_admin_user
+from models.users import User
 
-async def test_register_user(app: FastAPI):
+# Session and mock_admin user overrides are handled by the test fixture in conftest.py
+async def test_register_user(app: FastAPI, admin_override):
     async with AsyncClient(
         base_url="http://testserver",
         transport=ASGITransport(app=app),
@@ -9,15 +12,14 @@ async def test_register_user(app: FastAPI):
         response = await client.post(
             "/users/register",
             json={
-                "username": "bbbtecstu545ser34gf3",
+                "username": "ffffg",
                 "email": "testuser@example.com",
                 "password": "password1323"
             }
         )
-        print(response.json())  # add before the assert
 
         assert response.status_code == 201
         data = response.json()
         assert data["ok"] is True
         assert "id" in data["user"]
-        assert data["user"]["username"] == "bbbtecstu545ser34gf3"
+        assert data["user"]["username"] == "ffffg"

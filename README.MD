@@ -9,3 +9,5 @@ Users employ a defense in depth pattern: services authenticate as well.
 All other features are shallow, with routes taking care of acccess control independently.
 
 Users can have multiple roles.
+
+pytest tests/ -v
