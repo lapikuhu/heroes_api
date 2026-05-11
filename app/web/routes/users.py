@@ -32,7 +32,7 @@ router = APIRouter(prefix="/users", tags=["users"])
              status_code=201)
 async def create_user(user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
     try:
-        user = await users_service.create_user_service(user_data, admin_user, session)
+        user = await users_service.create_user_service(user_data, session, admin_user)
         return UserCreatedResponse(
             ok=True,
             user=UserRead(

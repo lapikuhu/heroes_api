@@ -29,10 +29,10 @@ app.include_router(missions.router)
 
 # Build the Gradio landing page and mount it at the root path
 
-landing_page = build_landing_page(app)
+# landing_page = build_landing_page(app)
 
 # Mount the Gradio app at the root path ("/") of the FastAPI application
 # Preserved docs
 # Mindful of the app variable re-assignment.
-app = gr.mount_gradio_app(app, landing_page, path="/")
+#app = gr.mount_gradio_app(app, landing_page, path="/")
 

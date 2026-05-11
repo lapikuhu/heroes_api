@@ -8,7 +8,7 @@ async def create_user(user: User, session: AsyncSession) -> User:
     try:
         session.add(user)
         await session.commit()
-        await session.refresh(user)
+        await session.refresh(user, attribute_names=["roles"])  # ← load roles eagerly
         return user
     except Exception:
         await session.rollback()
@@ -18,7 +18,7 @@ async def update_user(user: User, session: AsyncSession) -> User:
     try:
         session.add(user)
         await session.commit()
-        await session.refresh(user)
+        await session.refresh(user, attribute_names=["roles"])  # ← load roles eagerly
         return user
     except Exception:
         await session.rollback()
