@@ -33,7 +33,7 @@ async def create_user_service(user_data: UserCreate, session: AsyncSession, cur_
         user = User(
             username=user_data.username,
             hashed_password=hash_password(user_data.password),
-            is_admin=cur_user_is_admin.is_admin,
+            is_admin=user_data.is_admin, # User data, not the current user!
             roles=[Role(name=role_name) for role_name in user_data.roles]
         )
     return await users_repo.create_user(user, session)

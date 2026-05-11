@@ -1,5 +1,6 @@
 from db import AsyncSession as Session
 from sqlmodel import select
+from sqlalchemy.orm import selectinload
 from models.heroes import Hero
 
 async def create_hero(hero: Hero, session: Session) -> Hero:
@@ -56,9 +57,16 @@ async def get_all_heroes(session: Session) -> list[Hero]:
     return result.all()
 
 async def get_hero_mission_ids(hero_id: int, session: Session) -> list[int] | None:
-    hero = await session.get(Hero, hero_id)
+    result = await session.exec(
+        select(Hero)
+        .where(Hero.id == hero_id)
+        .options(selectinload(Hero.missions)) # Eagerly load missions to avoid lazy loading issues when accessing hero.missions
+    )
+    hero = result.one_or_none()
+
     if not hero:
         return None
+
     return [mission.id for mission in hero.missions]
 
 async def delete_hero(hero_id: int, session: Session) -> bool:

@@ -10,6 +10,7 @@ class MissionCreate(SQLModel):
     hero_id: int | None = Field(default=None, ge=1, title="ID of the hero assigned to the mission")
 
 class MissionReadById(SQLModel):
+    id: int = Field(title="ID of the mission")
     name: str = Field(title="Title of the mission", min_length=5)
     difficulty: int = Field(title="Difficulty level of the mission", ge=1, le=10)
     completed: bool = Field(title="Is the mission completed?", default=False)

@@ -60,24 +60,37 @@ def admin_override(app: FastAPI):
 ### ----------MOCK USER CREATION FIXTURE----------
 
 @pytest.fixture
-def create_mock_user(app: FastAPI, admin_override):
+def create_mock_user(app: FastAPI):
     async def mock_user_creation(
         username: str = "testname1",
         email: str = "testname1@example.com",
         password: str = "password123",
     ):
-        async with AsyncClient(
-            base_url="http://testserver",
-            transport=ASGITransport(app=app),
-        ) as client:
-            response = await client.post(
-                "/users/register",
-                json={
-                    "username": username,
-                    "email": email,
-                    "password": password,
-                },
-            )
+        previous_admin_override = app.dependency_overrides.get(get_admin_user)
+
+        async def mock_admin():
+            return User(id=1, username="admin", is_admin=True, hashed_password="x")
+
+        app.dependency_overrides[get_admin_user] = mock_admin
+
+        try:
+            async with AsyncClient(
+                base_url="http://testserver",
+                transport=ASGITransport(app=app),
+            ) as client:
+                response = await client.post(
+                    "/users/register",
+                    json={
+                        "username": username,
+                        "email": email,
+                        "password": password,
+                    },
+                )
+        finally:
+            if previous_admin_override is None:
+                app.dependency_overrides.pop(get_admin_user, None) # Remove the override if there was none before
+            else:
+                app.dependency_overrides[get_admin_user] = previous_admin_override # Keep the previous override if there was one
 
         assert response.status_code == 201
         data = response.json()

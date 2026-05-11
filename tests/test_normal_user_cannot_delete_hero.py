@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
-# Attempt to create a hero with the token -> assert 201 Created and correct response body
-async def test_create_hero_with_token(app: FastAPI, auth_mock_user):
+async def test_normal_user_cannot_delete_hero(app: FastAPI, auth_mock_user, ):
     auth_user = await auth_mock_user()
     token = auth_user["access_token"]
     async with AsyncClient(
@@ -10,7 +9,8 @@ async def test_create_hero_with_token(app: FastAPI, auth_mock_user):
         transport=ASGITransport(app=app),
         headers={"Authorization": f"Bearer {token}"},
     ) as client:
-        response = await client.post(
+        # First create a hero to ensure there's something to delete
+        create_response = await client.post(
             "/heroes/",
             json={
                 "name": "Test Hero",
@@ -18,8 +18,9 @@ async def test_create_hero_with_token(app: FastAPI, auth_mock_user):
                 "age": 30
             }
         )
-        assert response.status_code == 201
-        data = response.json()
-        assert data["name"] == "Test Hero"
-        assert data["power"] == "Testing"
-        assert data["age"] == 30
+        assert create_response.status_code == 201
+        hero_id = create_response.json()["id"]
+
+        # Now attempt to delete the hero
+        delete_response = await client.delete(f"/heroes/{hero_id}")
+        assert delete_response.status_code == 403  # Forbidden for normal users
