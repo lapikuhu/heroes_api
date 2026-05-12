@@ -1,4 +1,3 @@
-from sqlmodel import Session
 from models.users import User
 from services import auth
 from db import AsyncSession, get_session
@@ -56,4 +55,3 @@ def pagination(skip: int = 0, limit: int = 20) -> dict:
 
 
 Page = Annotated[dict, Depends(pagination)]
-

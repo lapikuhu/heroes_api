@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heroes Console Standalone</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div id="root">
+      <main class="status-page">
+        <p>Loading Heroes Console...</p>
+      </main>
+    </div>
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.28.5/babel.min.js"></script>
+    <script type="text/babel">
+      const { useEffect, useMemo, useState } = React;
+      const apiBaseUrl = localStorage.getItem("heroes_api_base_url") || "http://127.0.0.1:8000";
+      const tokenKey = "heroes_api_token";
+      const roles = ["admin", "editor", "viewer"];
+
+      async function request(path, options = {}) {
+        const headers = new Headers(options.headers || {});
+        if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+        if (options.token) headers.set("Authorization", `Bearer ${options.token}`);
+        const response = await fetch(`${apiBaseUrl}${path}`, { ...options, headers });
+        if (!response.ok) {
+          let detail = `Request failed with ${response.status}`;
+          try {
+            const body = await response.json();
+            detail = body.detail || detail;
+          } catch {}
+          throw new Error(detail);
+        }
+        return response.status === 204 ? undefined : response.json();
+      }
+
+      const api = {
+        login(username, password) {
+          return request("/users/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ username, password }),
+          });
+        },
+        me: (token) => request("/users/me", { token }),
+        heroes: () => request("/heroes/"),
+        missions: () => request("/missions/"),
+        users: (token) => request("/users/", { token }),
+        createHero: (token, payload) => request("/heroes/", { method: "POST", token, body: JSON.stringify(payload) }),
+        updateHero: (token, id, payload) => request(`/heroes/${id}`, { method: "PATCH", token, body: JSON.stringify(payload) }),
+        deleteHero: (token, id) => request(`/heroes/${id}`, { method: "DELETE", token }),
+        createMission: (token, payload) => request("/missions/", { method: "POST", token, body: JSON.stringify(payload) }),
+        updateMission: (token, id, payload) => request(`/missions/${id}`, { method: "PATCH", token, body: JSON.stringify(payload) }),
+        deleteMission: (token, id) => request(`/missions/${id}`, { method: "DELETE", token }),
+        createUser: (token, payload) => request("/users/register", { method: "POST", token, body: JSON.stringify(payload) }),
+        updateUser: (token, id, payload) => request(`/users/${id}`, { method: "PATCH", token, body: JSON.stringify(payload) }),
+        deleteUser: (token, id) => request(`/users/${id}`, { method: "DELETE", token }),
+      };
+
+      function App() {
+        const [token, setToken] = useState(() => localStorage.getItem(tokenKey));
+        const [user, setUser] = useState(null);
+        const [view, setView] = useState("dashboard");
+        const [loading, setLoading] = useState(Boolean(token));
+
+        useEffect(() => {
+          if (!token) {
+            setLoading(false);
+            setUser(null);
+            return;
+          }
+          api.me(token)
+            .then(setUser)
+            .catch(() => {
+              localStorage.removeItem(tokenKey);
+              setToken(null);
+            })
+            .finally(() => setLoading(false));
+        }, [token]);
+
+        function logout() {
+          localStorage.removeItem(tokenKey);
+          setToken(null);
+          setUser(null);
+          setView("dashboard");
+        }
+
+        if (loading) return <main className="status-page"><p>Loading your console...</p></main>;
+        if (!token) return <Login onToken={setToken} />;
+
+        return (
+          <div className="app-shell">
+            <aside className="sidebar">
+              <div className="sidebar-header">
+                <div className="brand-mark compact"><span>Heroes</span></div>
+              </div>
+              <nav className="sidebar-nav">
+                {["dashboard", "heroes", "missions"].map((item) => (
+                  <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item}</button>
+                ))}
+                {user?.is_admin && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
+              </nav>
+            </aside>
+            <div className="shell-main">
+              <header className="topbar">
+                <div>
+                  <p className="eyebrow">Signed in</p>
+                  <strong>{user?.username}</strong>
+                </div>
+                <div className="topbar-actions">
+                  {user?.is_admin && <span className="badge">Admin</span>}
+                  <button className="ghost-button" onClick={logout}>Logout</button>
+                </div>
+              </header>
+              <main className="content">
+                {view === "dashboard" && <Dashboard token={token} user={user} />}
+                {view === "heroes" && <Heroes token={token} user={user} />}
+                {view === "missions" && <Missions token={token} user={user} />}
+                {view === "users" && user?.is_admin && <Users token={token} currentUser={user} />}
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+      function Login({ onToken }) {
+        const [username, setUsername] = useState("");
+        const [password, setPassword] = useState("");
+        const [error, setError] = useState("");
+
+        async function submit(event) {
+          event.preventDefault();
+          setError("");
+          try {
+            const response = await api.login(username, password);
+            localStorage.setItem(tokenKey, response.access_token);
+            onToken(response.access_token);
+          } catch (err) {
+            setError(err.message);
+          }
+        }
+
+        return (
+          <main className="login-page">
+            <section className="login-copy">
+              <div className="brand-mark"><span>Heroes Console</span></div>
+              <h1>Command the roster with clarity.</h1>
+              <p>Manage heroes, missions, and users from a bright workspace tuned for fast admin work.</p>
+              <div className="login-art" aria-hidden="true">
+                <div className="art-tile teal"></div>
+                <div className="art-tile yellow"></div>
+                <div className="art-tile blue"></div>
+              </div>
+            </section>
+            <section className="login-panel">
+              <h2>Log in</h2>
+              <form className="stack" onSubmit={submit}>
+                <label>Username<input value={username} onChange={(event) => setUsername(event.target.value)} required /></label>
+                <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+                {error && <p className="form-error">{error}</p>}
+                <button className="primary-button" type="submit">Sign in</button>
+              </form>
+            </section>
+          </main>
+        );
+      }
+
+      function Page({ title, subtitle, children }) {
+        return <section className="page"><header className="page-header"><div><p className="eyebrow">Heroes API</p><h1>{title}</h1><p>{subtitle}</p></div></header>{children}</section>;
+      }
+
+      function Dashboard({ token, user }) {
+        const [heroes, setHeroes] = useState([]);
+        const [missions, setMissions] = useState([]);
+        const [users, setUsers] = useState([]);
+        useEffect(() => {
+          api.heroes().then(setHeroes);
+          api.missions().then(setMissions);
+          if (user?.is_admin) api.users(token).then(setUsers);
+        }, []);
+        const complete = missions.filter((mission) => mission.completed).length;
+        return (
+          <Page title="Dashboard" subtitle="A quick read on the people and work in motion.">
+            <div className="metrics-grid">
+              <Metric label="Heroes" value={heroes.length} />
+              <Metric label="Missions" value={missions.length} />
+              <Metric label="Completed" value={complete} />
+              <Metric label={user?.is_admin ? "Users" : "Role"} value={user?.is_admin ? users.length : "Member"} />
+            </div>
+          </Page>
+        );
+      }
+
+      function Metric({ label, value }) {
+        return <article className="metric-card"><p>{label}</p><strong>{value}</strong></article>;
+      }
+
+      function Heroes({ token, user }) {
+        const [heroes, setHeroes] = useState([]);
+        const [form, setForm] = useState({ name: "", power: "", age: "" });
+        const load = () => api.heroes().then(setHeroes);
+        useEffect(() => { load(); }, []);
+        async function create(event) {
+          event.preventDefault();
+          await api.createHero(token, { name: form.name, power: form.power, age: form.age ? Number(form.age) : null });
+          setForm({ name: "", power: "", age: "" });
+          load();
+        }
+        return (
+          <Page title="Heroes" subtitle="Create and maintain the roster.">
+            <form className="panel form-grid" onSubmit={create}>
+              <input placeholder="Hero name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input placeholder="Power" value={form.power} onChange={(e) => setForm({ ...form, power: e.target.value })} required />
+              <input placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+              <button className="primary-button">Create hero</button>
+            </form>
+            <div className="resource-grid">
+              {heroes.map((hero) => <article className="resource-card" key={hero.id}><h2>{hero.name}</h2><p>{hero.power}</p><p className="muted">Age: {hero.age || "unknown"}</p>{user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); load(); }}>Delete</button>}</article>)}
+            </div>
+          </Page>
+        );
+      }
+
+      function Missions({ token, user }) {
+        const [missions, setMissions] = useState([]);
+        const [heroes, setHeroes] = useState([]);
+        const [form, setForm] = useState({ name: "", difficulty: 5, hero_id: "", completed: false });
+        const load = () => Promise.all([api.missions().then(setMissions), api.heroes().then(setHeroes)]);
+        useEffect(() => { load(); }, []);
+        async function create(event) {
+          event.preventDefault();
+          await api.createMission(token, { ...form, difficulty: Number(form.difficulty), hero_id: form.hero_id ? Number(form.hero_id) : null });
+          setForm({ name: "", difficulty: 5, hero_id: "", completed: false });
+          load();
+        }
+        return (
+          <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
+            <form className="panel form-grid" onSubmit={create}>
+              <input placeholder="Mission name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <input type="number" min="1" max="10" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} />
+              <select value={form.hero_id} onChange={(e) => setForm({ ...form, hero_id: e.target.value })}><option value="">Unassigned</option>{heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}</select>
+              <button className="primary-button">Create mission</button>
+            </form>
+            <div className="table-panel">
+              {missions.map((mission) => <div className="table-row" key={mission.id}><strong>{mission.name}</strong><span>Difficulty {mission.difficulty}</span><button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); load(); }}>{mission.completed ? "Complete" : "Open"}</button>{user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); load(); }}>Delete</button>}</div>)}
+            </div>
+          </Page>
+        );
+      }
+
+      function Users({ token, currentUser }) {
+        const [users, setUsers] = useState([]);
+        const [form, setForm] = useState({ username: "", password: "", is_admin: false, roles: ["viewer"] });
+        const load = () => api.users(token).then(setUsers);
+        useEffect(() => { load(); }, []);
+        async function create(event) {
+          event.preventDefault();
+          await api.createUser(token, form);
+          setForm({ username: "", password: "", is_admin: false, roles: ["viewer"] });
+          load();
+        }
+        return (
+          <Page title="Users" subtitle="Admin-only account creation and cleanup.">
+            <form className="panel form-grid" onSubmit={create}>
+              <input placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+              <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <select value={form.roles[0]} onChange={(e) => setForm({ ...form, roles: [e.target.value] })}>{roles.map((role) => <option key={role}>{role}</option>)}</select>
+              <label className="check-label"><input type="checkbox" checked={form.is_admin} onChange={(e) => setForm({ ...form, is_admin: e.target.checked })} />Admin</label>
+              <button className="primary-button">Create user</button>
+            </form>
+            <div className="table-panel">
+              {users.map((account) => <div className="table-row" key={account.id}><strong>{account.username}</strong><span>{account.roles.join(", ") || "No roles"}</span><span>{account.is_admin ? "Admin" : "Member"}</span><button className="danger-button" disabled={account.id === currentUser.id} onClick={async () => { await api.deleteUser(token, account.id); load(); }}>Delete</button></div>)}
+            </div>
+          </Page>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

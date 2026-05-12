@@ -9,7 +9,6 @@ from models.user_roles import Role
 from repositories import users_repo
 from schemas.users import UserCreate, UserIsAdminResponse
 from security import hash_password, verify_password, create_access_token
-from sqlmodel import Session
 from db import AsyncSession
 
 
@@ -60,7 +59,7 @@ async def update_user_service(user_id: int, user_data: UserCreate, session: Asyn
     
     user.username = user_data.username
     user.hashed_password = hash_password(user_data.password)
-    user.is_admin = cur_user_is_admin.is_admin
+    user.is_admin = user_data.is_admin
     user.roles = [Role(name=role_name) for role_name in user_data.roles]
     
     return await users_repo.update_user(user, session)
@@ -88,6 +87,11 @@ async def delete_user_service(user_id: int, session: AsyncSession, cur_user_is_a
 
 async def get_user_by_username_service(username: str, session: AsyncSession) -> User | None:
     return await users_repo.get_user_by_username(username, session)
+
+async def get_all_users_service(session: AsyncSession, cur_user_is_admin: UserIsAdminResponse) -> list[User]:
+    if cur_user_is_admin.is_admin is False:
+        raise ValueError("Only admins can list users")
+    return await users_repo.get_all_users(session)
 
 async def get_user_by_id_service(user_id: int, session: AsyncSession) -> User | None:
     return await users_repo.get_user_by_id(user_id, session)

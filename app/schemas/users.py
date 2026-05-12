@@ -17,7 +17,7 @@ class UserCreate(SQLModel):
         invalid = set(v) - set(FIXED_ROLES)
         if invalid:
             raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
-        return v()
+        return v
 
 class UserDelete(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)
@@ -53,7 +53,7 @@ class UserRead(SQLModel):
         invalid = set(v) - set(FIXED_ROLES)
         if invalid:
             raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
-        return v()
+        return v
 
 class UserCreatedResponse(SQLModel):
     """Response model for user creation"""
@@ -69,7 +69,7 @@ class UserRolesResponse(SQLModel):
         invalid = set(v) - set(FIXED_ROLES)
         if invalid:
             raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
-        return v()
+        return v
 
 class UserIsAdminResponse(SQLModel):
     """Response model for checking if user is admin"""

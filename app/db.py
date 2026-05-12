@@ -4,12 +4,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from models import user_roles
 from models.user_roles import Role
 from models.users import User
 from security import get_password_hash
 from config import DATABASE_URL
-from config import ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
+from config import ADMIN_USERNAME, ADMIN_PASSWORD
 from config import FIXED_ROLES
 
 
@@ -60,10 +59,9 @@ async def create_admin_if_not_exists():
         if not admin_user:
             admin_user = User(
                 username=ADMIN_USERNAME,
-                email=ADMIN_EMAIL,
                 hashed_password=get_password_hash(ADMIN_PASSWORD),
                 is_admin=True,
-                user_roles=[user_roles.Role(name="admin")]
+                roles=[Role(name="admin")]
             )
             session.add(admin_user)
             await session.commit()

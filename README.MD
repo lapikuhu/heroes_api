@@ -1,3 +1,5 @@
+Backend:
+
 cd app
 uvicorn main:app --reload
 
@@ -10,4 +12,19 @@ All other features are shallow, with routes taking care of acccess control indep
 
 Users can have multiple roles.
 
-pytest tests/ -v
+Tests from the repo root:
+
+Frontend:
+
+cd frontend
+npm install
+npm run dev
+
+http://127.0.0.1:5173
+
+No npm fallback on Windows:
+
+cd frontend
+py -m http.server 5173
+
+Open http://127.0.0.1:5173/standalone.html

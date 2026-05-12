@@ -22,13 +22,7 @@ async def get_mission_by_id(mission_id: int, session: Session) -> Mission | None
     return await missions_repo.get_mission(mission_id, session=session)
 
 async def update_mission_by_id(mission_id: int, mission_update_data: MissionUpdate, session: Session) -> Mission | None:
-    mission_update = Mission(
-        name=mission_update_data.name,
-        difficulty=mission_update_data.difficulty,
-        completed=mission_update_data.completed,
-        hero_id=mission_update_data.hero_id
-    )
-    return await missions_repo.update_mission(mission_id, mission_update, session=session)
+    return await missions_repo.update_mission(mission_id, mission_update_data, session=session)
 
 async def delete_mission_by_id(mission_id: int, session: Session) -> bool:
     return await missions_repo.delete_mission(mission_id, session=session)

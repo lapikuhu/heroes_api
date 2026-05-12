@@ -1,5 +1,6 @@
 
 from models.users import User
+from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from db import AsyncSession
@@ -26,7 +27,7 @@ async def update_user(user: User, session: AsyncSession) -> User:
 
 async def delete_user(user: User, session: AsyncSession) -> None:
     try:
-        session.delete(user)
+        await session.delete(user)
         await session.commit()
     except Exception:
         await session.rollback()
@@ -39,11 +40,20 @@ async def get_user_by_token(token: str, session: AsyncSession) -> User | None:
 
 async def get_user_by_username(username: str, session: AsyncSession) -> User | None:
     # Repo get user by username
-    result = await session.exec(select(User).where(User.username == username))
+    result = await session.exec(
+        select(User).options(selectinload(User.roles)).where(User.username == username)
+    )
     return result.first()
 
 async def get_user_by_id(user_id: int, session: AsyncSession) -> User | None:
-    return await session.get(User, user_id)
+    result = await session.exec(
+        select(User).options(selectinload(User.roles)).where(User.id == user_id)
+    )
+    return result.first()
+
+async def get_all_users(session: AsyncSession) -> list[User]:
+    result = await session.exec(select(User).options(selectinload(User.roles)))
+    return list(result.all())
 
 async def is_existing_user(username: str, session: AsyncSession) -> bool:
     result = await session.exec(select(User).where(User.username == username))

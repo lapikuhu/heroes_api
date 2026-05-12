@@ -14,7 +14,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
 # Local imports
-from models import user_roles
 from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user, get_current_user
 from schemas.users import UserCreate, UserRead, UserCreatedResponse
 
@@ -22,6 +21,14 @@ from services import users_service
 
 # Define the router for user-related endpoints
 router = APIRouter(prefix="/users", tags=["users"])
+
+def to_user_read(user) -> UserRead:
+    return UserRead(
+        id=user.id,
+        username=user.username,
+        is_admin=user.is_admin,
+        roles=[role.name for role in user.roles],
+    )
 
 ###--------------------------- CREATE USER ------------------------- ###
 
@@ -35,12 +42,7 @@ async def create_user(user_data: UserCreate, session: SessionDep, admin_user: Ad
         user = await users_service.create_user_service(user_data, session, admin_user)
         return UserCreatedResponse(
             ok=True,
-            user=UserRead(
-                id=user.id,
-                username=user.username,
-                is_admin=user.is_admin,
-                user_roles=[role.name for role in user.roles]
-            ),
+            user=to_user_read(user),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -80,12 +82,19 @@ async def get_me_user(current_user: CurrentUser):
     Returns:
         UserRead: The current user's information, including id, username, admin status, and roles
     """
-    return UserRead(
-        id=current_user.id,
-        username=current_user.username,
-        is_admin=current_user.is_admin,
-        user_roles=[role.name for role in current_user.roles]
-    )
+    return to_user_read(current_user)
+
+###--------------------------- LIST USERS ----------------------- ###
+
+@router.get("/", tags=["users"],
+            dependencies=[Depends(get_admin_user)],
+            response_model=list[UserRead], status_code=200)
+async def get_all_users(session: SessionDep, admin_user: AdminUser):
+    try:
+        users = await users_service.get_all_users_service(session, admin_user)
+        return [to_user_read(user) for user in users]
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
 
 ###------------------------ GET USER INFO BY USERNAME --------------------- ###
 
@@ -108,12 +117,7 @@ async def get_user_by_username(username: str, session: SessionDep):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return UserRead(
-        id=user.id,
-        username=user.username,
-        is_admin=user.is_admin,
-        user_roles=[role.name for role in user.roles]
-    )
+    return to_user_read(user)
 
 ###---------------------------- UPDATE USER ------------------------ ###
 
@@ -135,13 +139,8 @@ async def update_user(user_id: int, user_data: UserCreate, session: SessionDep, 
         HTTPException: If the user is not found with status code 404 or if validation fails with status code 400.  
     """
     try:
-        user_update = await users_service.update_user_service(user_id, user_data, admin_user, session)
-        return UserRead(
-            id=user_update.id,
-            username=user_update.username,
-            is_admin=user_update.is_admin,
-            user_roles=[role.name for role in user_update.roles]
-        )
+        user_update = await users_service.update_user_service(user_id, user_data, session, admin_user)
+        return to_user_read(user_update)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -160,4 +159,7 @@ async def delete_user(user_id: int, session: SessionDep, admin_user: AdminUser):
     Raises:
         HTTPException: If the user is not found with status code 404.
     """
-    await users_service.delete_user_service(user_id, admin_user, session)
+    try:
+        await users_service.delete_user_service(user_id, session, admin_user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
