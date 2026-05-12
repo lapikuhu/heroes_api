@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
-from dependencies import get_admin_user
-from models.users import User
+
+"""Test to verify that a new user can successfully register using the
+ /users/register endpoint."""
 
 # Session and mock_admin user overrides are handled by the test fixture in conftest.py
 async def test_register_user(app: FastAPI, admin_override):

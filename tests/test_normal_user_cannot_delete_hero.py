@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
+"""Test to verify that a normal user cannot delete a hero and receives a
+403 Forbidden response when attempting to do so."""
+
 async def test_normal_user_cannot_delete_hero(app: FastAPI, auth_mock_user, ):
     auth_user = await auth_mock_user()
     token = auth_user["access_token"]

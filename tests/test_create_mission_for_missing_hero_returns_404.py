@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
+"""Test to verify that attempting to create a mission for a non-existent
+ hero returns a 404 Not Found response."""
+
 async def test_create_mission_for_missing_hero_returns_404(app: FastAPI, auth_mock_user):
     auth_user = await auth_mock_user()
     token = auth_user["access_token"]

@@ -8,10 +8,11 @@ from dependencies import  get_admin_user
 from db import engine, get_session
 from models.users import User
 
-### -------- DB SESSION FIXTURE --------
+### ---------------------- DB SESSION FIXTURE ---------------------- ###
 
 @pytest_asyncio.fixture
 async def app() -> FastAPI:
+    """Provides a FastAPI app instance with an overridden database session for testing."""
     async with engine.connect() as conn:
         transaction = await conn.begin()
 
@@ -22,6 +23,7 @@ async def app() -> FastAPI:
         )
 
         async def override_get_session():
+            """Override the get_session dependency to use the test database session."""
             yield session
 
         fake_admin = User(id=1, username="admin", is_admin=True, hashed_password="x")
@@ -30,11 +32,9 @@ async def app() -> FastAPI:
             return fake_admin
 
         main_app.dependency_overrides[get_session] = override_get_session
-        #main_app.dependency_overrides[get_admin_user] = mock_admin
 
         # Clean-up nightmare: ensure the db is clean after each test by rolling
         # back the transaction and closing the session, and disposing the engine.
-
         try:
             yield main_app
         finally:
@@ -46,21 +46,25 @@ async def app() -> FastAPI:
                     await transaction.rollback()
                 await engine.dispose()
 
-### -------- MOCK ADMIN USER FIXTURE ---------------
+### -------------------- MOCK ADMIN USER FIXTURE ------------------- ###
 
 @pytest.fixture
 def admin_override(app: FastAPI):
     async def mock_admin():
+        """Create a mock admin user for testing purposes."""
         return User(id=1, username="admin", is_admin=True, hashed_password="x")
 
+    # Override the get_admin_user dependency to return the mock admin user
     app.dependency_overrides[get_admin_user] = mock_admin
     yield
+    # Remove the admin override after the test to avoid affecting other tests
     app.dependency_overrides.pop(get_admin_user, None)
 
-### ----------MOCK USER CREATION FIXTURE----------
+### ------------------- MOCK USER CREATION FIXTURE ----------------- ###
 
 @pytest.fixture
 def create_mock_user(app: FastAPI):
+    """Fixture to create a mock user for testing purposes."""
     async def mock_user_creation(
         username: str = "testname1",
         email: str = "testname1@example.com",
@@ -104,9 +108,11 @@ def create_mock_user(app: FastAPI):
 
     return mock_user_creation
 
+### --------------------- MOCK USER AUTH FIXTURE ------------------- ###
 
 @pytest.fixture
 def auth_mock_user(app: FastAPI, create_mock_user):
+    """Fixture to create and authenticate a mock user, returning the access token and user info."""
     async def auth_mock_user_login(
         username: str = "testname1",
         email: str = "testname1@example.com",

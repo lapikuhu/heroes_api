@@ -3,6 +3,9 @@ from httpx import AsyncClient, ASGITransport
 from dependencies import get_admin_user
 from models.users import User
 
+"""Test to verify that the login endpoint returns a valid access token
+for a mock user."""
+
 async def test_login_returns_token(app: FastAPI, create_mock_user):
     user = await create_mock_user()
 

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
-# Attempt to create a hero without authentication -> assert 401 Unauthorized
+"""Test to verify that creating a hero without authentication returns a 
+401 Unauthorized response."""
 
 async def test_create_hero_requires_authentication(app: FastAPI):
     async with AsyncClient(

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
+"""Test to verify that creating a hero with a valid authentication token
+ returns a 201 Created response and the correct hero data."""
+
 # Attempt to create a hero with the token -> assert 201 Created and correct response body
 async def test_create_hero_with_token(app: FastAPI, auth_mock_user):
     auth_user = await auth_mock_user()
