@@ -10,10 +10,13 @@ This is a demo FastAPI project with limited functionality. It is meant to show a
 - Public read endpoints for heroes and missions.
 - Protected create/update endpoints for authenticated users.
 - Admin-only delete flows for selected resources.
+- Frontend authored by codex.
 - A React frontend prototype with login, sidebar navigation, dashboard, heroes, missions, and users views.
 - A standalone browser frontend fallback for Windows environments without Node/npm.
 
 ## Backend
+
+### *Authored by codex.*
 
 Run the API from the `app` directory:
 
@@ -48,6 +51,7 @@ main:app
 
 ## Frontend
 
+### *Authored by Codex*
 The normal React/Vite frontend lives in `frontend/`.
 
 If Node/npm are available:

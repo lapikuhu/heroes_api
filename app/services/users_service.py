@@ -86,17 +86,47 @@ async def delete_user_service(user_id: int, session: AsyncSession, cur_user_is_a
 
 
 async def get_user_by_username_service(username: str, session: AsyncSession) -> User | None:
+    """Get a user by username. Returns None if the user does not exist.
+    Args:
+        username (str): The username of the user to retrieve.
+        session (AsyncSession): Database session.
+    Returns:
+        User | None: The user instance if found, otherwise None.
+    """
     return await users_repo.get_user_by_username(username, session)
 
 async def get_all_users_service(session: AsyncSession, cur_user_is_admin: UserIsAdminResponse) -> list[User]:
+    """Get a list of all users. Only admins can list users.
+    Args:
+        session (AsyncSession): Database session.
+        cur_user_is_admin (UserIsAdminResponse): Whether the user performing the operation is an admin.
+    Returns:
+        list[User]: A list of all user instances.
+    Raises:
+        ValueError: If a non-admin tries to list users.
+    """
     if cur_user_is_admin.is_admin is False:
         raise ValueError("Only admins can list users")
     return await users_repo.get_all_users(session)
 
 async def get_user_by_id_service(user_id: int, session: AsyncSession) -> User | None:
+    """Get a user by ID. Returns None if the user does not exist.
+    Args:
+        user_id (int): The ID of the user to retrieve.
+        session (AsyncSession): Database session.
+    Returns:
+        User | None: The user instance if found, otherwise None.
+    """
     return await users_repo.get_user_by_id(user_id, session)
 
 async def get_user_roles_by_id_service(user_id: int, session: AsyncSession) -> list[str] | None:
+    """Get the roles of a user by ID. Returns None if the user does not exist.
+    Args:
+        user_id (int): The ID of the user whose roles to retrieve.
+        session (AsyncSession): Database session.
+    Returns:
+        list[str] | None: A list of role names if the user is found, otherwise None.
+    """
     return await users_repo.get_user_roles_by_id(user_id, session)
 
 async def user_login_service(username: str, password: str, session: AsyncSession) -> tuple[str, str] | None:

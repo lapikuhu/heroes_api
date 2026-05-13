@@ -23,6 +23,12 @@ from services import users_service
 router = APIRouter(prefix="/users", tags=["users"])
 
 def to_user_read(user) -> UserRead:
+    """Convert a user model to a UserRead schema.
+    Args:
+        user: The user model instance to convert.
+    Returns:
+        UserRead: The converted user data.
+    """
     return UserRead(
         id=user.id,
         username=user.username,
@@ -38,6 +44,15 @@ def to_user_read(user) -> UserRead:
              dependencies=[Depends(get_admin_user)], # Only admins can create users, throws 403 if not admin
              status_code=201)
 async def create_user(user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
+    """Create a new user. Admins only.
+    Args:
+        user_data (UserCreate): The data for the new user.
+        session (SessionDep): The database session dependency.
+        admin_user (AdminUser): The currently authenticated admin user, provided by dependency injection.
+    Returns:
+        UserCreatedResponse: The response containing the created user's information.
+    Raises:
+        HTTPException: If there is an error during user creation (400)."""
     try:
         user = await users_service.create_user_service(user_data, session, admin_user)
         return UserCreatedResponse(
@@ -90,6 +105,14 @@ async def get_me_user(current_user: CurrentUser):
             dependencies=[Depends(get_admin_user)],
             response_model=list[UserRead], status_code=200)
 async def get_all_users(session: SessionDep, admin_user: AdminUser):
+    """Get a list of all users. Admins only.
+    Args:
+        session (SessionDep): Database session dependency.
+        admin_user (AdminUser): The currently authenticated admin user, provided by dependency injection.
+    Returns:
+        list[UserRead]: A list of all users.
+    Raises:
+        HTTPException: If the user is not authorized (403)."""
     try:
         users = await users_service.get_all_users_service(session, admin_user)
         return [to_user_read(user) for user in users]

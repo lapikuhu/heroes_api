@@ -55,6 +55,14 @@ async def read_all_missions(session: SessionDep):
             response_model=MissionReadById, 
             status_code=200)
 async def read_mission(mission_id: int, session: SessionDep):
+    """Retrieve a mission by ID. Public endpoint, no authentication required.
+    Args:
+        mission_id (int): The ID of the mission to retrieve.
+        session (SessionDep): The database session to use for the operation.
+    Returns:
+        MissionReadById: The mission data.
+    Raises:
+        HTTPException: If the mission is not found (404)."""
     mission = await missions_service.get_mission_by_id(mission_id, session)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -67,6 +75,15 @@ async def read_mission(mission_id: int, session: SessionDep):
               response_model=MissionReadById, 
               status_code=200)
 async def update_mission(mission_id: int, mission_update: MissionUpdate, session: SessionDep):
+    """Update a mission by ID. Requires authentication.
+    Args:
+        mission_id (int): The ID of the mission to update.
+        mission_update (MissionUpdate): The mission data to update.
+        session (SessionDep): The database session dependency.
+    Returns:        
+        MissionReadById: The updated mission data.
+    Raises:        
+        HTTPException: If the mission is not found (404)."""
     mission = await missions_service.update_mission_by_id(mission_id, mission_update, session)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -80,6 +97,12 @@ async def update_mission(mission_id: int, mission_update: MissionUpdate, session
                response_model=None, 
                status_code=204)
 async def delete_mission(mission_id: int, session: SessionDep):
+    """Delete a mission by ID. Requires admin authentication.
+    Args:
+        mission_id (int): The ID of the mission to delete.
+        session (SessionDep): The database session dependency.
+    Raises: 
+        HTTPException: If the mission is not found (404) or if the user is not authorized (403)."""
     success = await missions_service.delete_mission_by_id(mission_id, session)
     if not success:
         raise HTTPException(status_code=404, detail="Mission not found")

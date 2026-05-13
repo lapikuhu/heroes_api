@@ -35,9 +35,24 @@ async def is_existing_hero(name: str, session: Session) -> bool:
     return result.first() is not None
 
 async def get_hero(hero_id: int, session: Session) -> Hero | None:
+    """Get a hero by ID. Returns None if the hero does not exist.
+    Args:
+        hero_id (int): The ID of the hero to retrieve.
+        session (Session): The database session to use for the operation.
+    Returns:
+        Hero | None: The hero instance if found, otherwise None.
+    """
     return await session.get(Hero, hero_id)
 
 async def update_hero(hero_id: int, hero_data: Hero, session: Session) -> Hero | None:
+    """Update a hero by ID. Returns the updated hero if successful, otherwise None.
+    Args:
+        hero_id (int): The ID of the hero to update.
+        hero_data (Hero): The new data for the hero.
+        session (Session): The database session to use for the operation.
+    Returns:
+        Hero | None: The updated hero instance if successful, otherwise None.
+    """
     hero = await session.get(Hero, hero_id)
     if not hero:
         return None
@@ -53,10 +68,23 @@ async def update_hero(hero_id: int, hero_data: Hero, session: Session) -> Hero |
         raise
 
 async def get_all_heroes(session: Session) -> list[Hero]:
+    """Get a list of all heroes.
+    Args:
+        session (Session): The database session to use for the operation.
+    Returns:
+        list[Hero]: A list of all hero instances.
+    """
     result = await session.exec(select(Hero))
     return result.all()
 
 async def get_hero_mission_ids(hero_id: int, session: Session) -> list[int] | None:
+    """Get the IDs of missions assigned to a hero by the hero's ID.
+    Args:
+        hero_id (int): The ID of the hero whose missions to retrieve.
+        session (Session): The database session to use for the operation.
+    Returns:
+        list[int] | None: A list of mission IDs if the hero is found, otherwise None.
+    """
     result = await session.exec(
         select(Hero)
         .where(Hero.id == hero_id)
@@ -70,6 +98,16 @@ async def get_hero_mission_ids(hero_id: int, session: Session) -> list[int] | No
     return [mission.id for mission in hero.missions]
 
 async def delete_hero(hero_id: int, session: Session) -> bool:
+    """Delete a hero by ID. Returns True if deletion was successful, False otherwise.
+    Heroes with associated missions cannot be deleted.
+    Args:
+        hero_id (int): The ID of the hero to delete.
+        session (Session): The database session to use for the operation.
+    Returns:
+        bool: True if deletion was successful, False otherwise.
+    Raises:
+        ValueError: If the hero is not found or if the hero has associated missions.
+    """
     hero = await session.get(Hero, hero_id)
     if not hero:
         return False
