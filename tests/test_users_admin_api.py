@@ -52,3 +52,91 @@ async def test_me_returns_roles_field(app: FastAPI, auth_mock_user):
     assert "roles" in data
     assert "user_roles" not in data
     assert data["roles"] == []
+
+
+async def test_admin_can_update_username_and_multiple_roles_without_password(
+    app: FastAPI,
+    admin_override,
+    create_mock_user,
+):
+    created = await create_mock_user(username="roleedit", password="password123")
+    user_id = created["response"]["user"]["id"]
+
+    async with AsyncClient(
+        base_url="http://testserver",
+        transport=ASGITransport(app=app),
+    ) as client:
+        response = await client.patch(
+            f"/users/{user_id}",
+            json={
+                "username": "roleeditrenamed",
+                "roles": ["editor", "viewer"],
+                "is_admin": False,
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["username"] == "roleeditrenamed"
+    assert set(data["roles"]) == {"editor", "viewer"}
+    assert data["is_admin"] is False
+
+
+async def test_admin_role_selection_sets_is_admin_true(
+    app: FastAPI,
+    admin_override,
+    create_mock_user,
+):
+    created = await create_mock_user(username="makeadmin", password="password123")
+    user_id = created["response"]["user"]["id"]
+
+    async with AsyncClient(
+        base_url="http://testserver",
+        transport=ASGITransport(app=app),
+    ) as client:
+        response = await client.patch(
+            f"/users/{user_id}",
+            json={
+                "roles": ["admin", "editor"],
+                "is_admin": True,
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data["roles"]) == {"admin", "editor"}
+    assert data["is_admin"] is True
+
+
+async def test_removing_admin_role_sets_is_admin_false(
+    app: FastAPI,
+    admin_override,
+    create_mock_user,
+):
+    created = await create_mock_user(username="dropadmin", password="password123")
+    user_id = created["response"]["user"]["id"]
+
+    async with AsyncClient(
+        base_url="http://testserver",
+        transport=ASGITransport(app=app),
+    ) as client:
+        add_admin_response = await client.patch(
+            f"/users/{user_id}",
+            json={
+                "roles": ["admin"],
+                "is_admin": True,
+            },
+        )
+        remove_admin_response = await client.patch(
+            f"/users/{user_id}",
+            json={
+                "roles": ["viewer"],
+                "is_admin": False,
+            },
+        )
+
+    assert add_admin_response.status_code == 200
+    assert remove_admin_response.status_code == 200
+    data = remove_admin_response.json()
+    assert data["roles"] == ["viewer"]
+    assert data["is_admin"] is False

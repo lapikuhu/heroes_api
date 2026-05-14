@@ -28,6 +28,12 @@ export type UserPayload = {
   roles: string[];
 };
 
+export type UserUpdatePayload = {
+  username?: string;
+  is_admin?: boolean;
+  roles?: string[];
+};
+
 export type HeroCreatePayload = {
   name: string;
   power: string;

@@ -23,6 +23,12 @@
       const apiBaseUrl = localStorage.getItem("heroes_api_base_url") || "http://127.0.0.1:8000";
       const tokenKey = "heroes_api_token";
       const roles = ["admin", "editor", "viewer"];
+      const hasAdminPrivileges = (user) => Boolean(user?.is_admin || user?.roles?.includes("admin"));
+      const getPrimaryRoleLabel = (user) => {
+        if (!user) return "";
+        if (user.roles?.length) return user.roles.join(", ");
+        return user.is_admin ? "Admin" : "Viewer";
+      };
 
       async function request(path, options = {}) {
         const headers = new Headers(options.headers || {});
@@ -104,7 +110,7 @@
                 {["dashboard", "heroes", "missions"].map((item) => (
                   <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item}</button>
                 ))}
-                {user?.is_admin && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
+                {hasAdminPrivileges(user) && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
               </nav>
             </aside>
             <div className="shell-main">
@@ -114,15 +120,15 @@
                   <strong>{user?.username}</strong>
                 </div>
                 <div className="topbar-actions">
-                  {user?.is_admin && <span className="badge">Admin</span>}
+                  {hasAdminPrivileges(user) && <span className="badge">Admin</span>}
                   <button className="ghost-button" onClick={logout}>Logout</button>
                 </div>
               </header>
               <main className="content">
-                {view === "dashboard" && <Dashboard token={token} user={user} />}
+                {view === "dashboard" && <Dashboard token={token} user={user} setView={setView} />}
                 {view === "heroes" && <Heroes token={token} user={user} />}
                 {view === "missions" && <Missions token={token} user={user} />}
-                {view === "users" && user?.is_admin && <Users token={token} currentUser={user} />}
+                {view === "users" && hasAdminPrivileges(user) && <Users token={token} currentUser={user} />}
               </main>
             </div>
           </div>
@@ -175,29 +181,36 @@
         return <section className="page"><header className="page-header"><div><p className="eyebrow">Heroes API</p><h1>{title}</h1><p>{subtitle}</p></div></header>{children}</section>;
       }
 
-      function Dashboard({ token, user }) {
+      function Dashboard({ token, user, setView }) {
         const [heroes, setHeroes] = useState([]);
         const [missions, setMissions] = useState([]);
         const [users, setUsers] = useState([]);
         useEffect(() => {
           api.heroes().then(setHeroes);
           api.missions().then(setMissions);
-          if (user?.is_admin) api.users(token).then(setUsers);
+          if (hasAdminPrivileges(user)) api.users(token).then(setUsers);
         }, []);
         const complete = missions.filter((mission) => mission.completed).length;
         return (
           <Page title="Dashboard" subtitle="A quick read on the people and work in motion.">
             <div className="metrics-grid">
-              <Metric label="Heroes" value={heroes.length} />
-              <Metric label="Missions" value={missions.length} />
-              <Metric label="Completed" value={complete} />
-              <Metric label={user?.is_admin ? "Users" : "Role"} value={user?.is_admin ? users.length : "Member"} />
+              <Metric label="Heroes" value={heroes.length} onClick={() => setView("heroes")} />
+              <Metric label="Missions" value={missions.length} onClick={() => setView("missions")} />
+              <Metric label="Completed" value={complete} onClick={() => setView("missions")} />
+              <Metric
+                label={hasAdminPrivileges(user) ? "Users" : "Role"}
+                value={hasAdminPrivileges(user) ? users.length : getPrimaryRoleLabel(user)}
+                onClick={hasAdminPrivileges(user) ? () => setView("users") : undefined}
+              />
             </div>
           </Page>
         );
       }
 
-      function Metric({ label, value }) {
+      function Metric({ label, value, onClick }) {
+        if (onClick) {
+          return <button className="metric-card metric-link" type="button" onClick={onClick}><p>{label}</p><strong>{value}</strong></button>;
+        }
         return <article className="metric-card"><p>{label}</p><strong>{value}</strong></article>;
       }
 
@@ -285,7 +298,7 @@
                       ) : (
                         <>
                           <button className="outline-button" onClick={() => beginEdit(hero)}>Edit</button>
-                          {user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); await load(); }}>Delete</button>}
+                          {hasAdminPrivileges(user) && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); await load(); }}>Delete</button>}
                         </>
                       )}
                     </div>
@@ -300,14 +313,14 @@
       function Missions({ token, user }) {
         const [missions, setMissions] = useState([]);
         const [heroes, setHeroes] = useState([]);
-        const [form, setForm] = useState({ name: "", difficulty: 5, hero_id: "", completed: false });
+        const [form, setForm] = useState({ name: "", difficulty: "", hero_id: "", completed: false });
         const [editing, setEditing] = useState({});
         const load = () => Promise.all([api.missions().then(setMissions), api.heroes().then(setHeroes)]);
         useEffect(() => { load(); }, []);
         async function create(event) {
           event.preventDefault();
           await api.createMission(token, { ...form, difficulty: Number(form.difficulty), hero_id: form.hero_id ? Number(form.hero_id) : null });
-          setForm({ name: "", difficulty: 5, hero_id: "", completed: false });
+          setForm({ name: "", difficulty: "", hero_id: "", completed: false });
           load();
         }
         function beginEdit(mission) {
@@ -342,7 +355,7 @@
           <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
             <form className="panel form-grid" onSubmit={create}>
               <input placeholder="Mission name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <input type="number" min="1" max="10" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} />
+              <input type="number" min="1" max="10" placeholder="Difficulty" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} required />
               <select value={form.hero_id} onChange={(e) => setForm({ ...form, hero_id: e.target.value })}><option value="">Unassigned</option>{heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}</select>
               <button className="primary-button">Create mission</button>
             </form>
@@ -388,7 +401,7 @@
                         <button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); await load(); }}>{mission.completed ? "Complete" : "Open"}</button>
                         <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
                         <div className="card-actions">
-                          {user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); await load(); }}>Delete</button>}
+                          {hasAdminPrivileges(user) && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); await load(); }}>Delete</button>}
                         </div>
                       </>
                     )}
@@ -402,6 +415,8 @@
       function Users({ token, currentUser }) {
         const [users, setUsers] = useState([]);
         const [form, setForm] = useState({ username: "", password: "", is_admin: false, roles: ["viewer"] });
+        const [editingUser, setEditingUser] = useState(null);
+        const [editForm, setEditForm] = useState({ username: "", roles: [] });
         const load = () => api.users(token).then(setUsers);
         useEffect(() => { load(); }, []);
         async function create(event) {
@@ -409,6 +424,42 @@
           await api.createUser(token, form);
           setForm({ username: "", password: "", is_admin: false, roles: ["viewer"] });
           load();
+        }
+        async function update(event) {
+          event.preventDefault();
+          if (!editingUser) return;
+          await api.updateUser(token, editingUser.id, {
+            username: editForm.username,
+            is_admin: editForm.roles.includes("admin"),
+            roles: editForm.roles,
+          });
+          closeEdit();
+          await load();
+        }
+        function beginEdit(account) {
+          setEditingUser(account);
+          setEditForm({
+            username: account.username,
+            roles: account.roles.length ? account.roles : ["viewer"],
+          });
+        }
+        function closeEdit() {
+          setEditingUser(null);
+          setEditForm({ username: "", roles: [] });
+        }
+        function toggleRole(role) {
+          setEditForm({
+            ...editForm,
+            roles: editForm.roles.includes(role)
+              ? editForm.roles.filter((value) => value !== role)
+              : [...editForm.roles, role],
+          });
+        }
+        async function deleteUser(account) {
+          if (account.id === currentUser.id) return;
+          if (!window.confirm("Delete this user?")) return;
+          await api.deleteUser(token, account.id);
+          await load();
         }
         return (
           <Page title="Users" subtitle="Admin-only account creation and cleanup.">
@@ -420,8 +471,57 @@
               <button className="primary-button">Create user</button>
             </form>
             <div className="table-panel">
-              {users.map((account) => <div className="table-row" key={account.id}><strong>{account.username}</strong><span>{account.roles.join(", ") || "No roles"}</span><span>{account.is_admin ? "Admin" : "Member"}</span><button className="danger-button" disabled={account.id === currentUser.id} onClick={async () => { await api.deleteUser(token, account.id); load(); }}>Delete</button></div>)}
+              <div className="table-row user-row">
+                <strong>Username</strong>
+                <strong>User Roles</strong>
+                <strong>Actions</strong>
+              </div>
+              {users.map((account) => (
+                <div className="table-row user-row" key={account.id}>
+                  <strong>{account.username}</strong>
+                  <div className="role-list">
+                    {account.roles.length
+                      ? account.roles.map((role) => <span className="role-chip" key={role}>{role}</span>)
+                      : <span className="muted">No roles</span>}
+                  </div>
+                  <div className="row-actions">
+                    <button className="outline-button" onClick={() => beginEdit(account)}>Edit</button>
+                    <button className="danger-button" disabled={account.id === currentUser.id} onClick={() => deleteUser(account)}>Delete</button>
+                  </div>
+                </div>
+              ))}
             </div>
+            {editingUser && (
+              <div className="modal-backdrop" role="presentation" onClick={closeEdit}>
+                <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-user-title" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-header">
+                    <div>
+                      <p className="eyebrow">Edit user</p>
+                      <h2 id="edit-user-title">{editingUser.username}</h2>
+                    </div>
+                    <button className="icon-button" onClick={closeEdit} aria-label="Close edit user dialog">x</button>
+                  </div>
+                  <form className="stack" onSubmit={update}>
+                    <label>
+                      Username
+                      <input value={editForm.username} minLength="3" onChange={(event) => setEditForm({ ...editForm, username: event.target.value })} required />
+                    </label>
+                    <div className="role-check-group" aria-label="User roles">
+                      {roles.map((role) => (
+                        <label className="check-label" key={role}>
+                          <input type="checkbox" checked={editForm.roles.includes(role)} onChange={() => toggleRole(role)} />
+                          {role}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="modal-actions">
+                      <button className="ghost-button" type="button" onClick={closeEdit}>Cancel</button>
+                      <button className="primary-button" type="submit">Save user</button>
+                    </div>
+                  </form>
+                </section>
+              </div>
+            )}
           </Page>
         );
       }

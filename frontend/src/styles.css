@@ -153,7 +153,8 @@ button:disabled {
 
 .login-panel h2,
 .panel h2,
-.resource-card h2 {
+.resource-card h2,
+.modal-panel h2 {
   font-family: var(--font-dm-sans);
   margin: 0 0 16px;
 }
@@ -349,6 +350,25 @@ select {
   padding: 24px;
 }
 
+.metric-link {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+button.metric-link {
+  text-align: left;
+  width: 100%;
+}
+
+.metric-link:hover,
+.metric-link:focus-visible {
+  border-color: var(--color-lottie-teal);
+  outline: 0;
+  transform: translateY(-2px);
+}
+
 .metric-card p {
   color: var(--color-steel-gray);
   margin: 0 0 12px;
@@ -414,7 +434,7 @@ select {
 }
 
 .table-row.user-row {
-  grid-template-columns: minmax(140px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) 130px auto auto auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(180px, auto);
 }
 
 .table-row:last-child {
@@ -432,6 +452,80 @@ select {
 .check-label input {
   min-height: auto;
   width: auto;
+}
+
+.role-list,
+.row-actions,
+.modal-actions,
+.modal-header,
+.role-check-group {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.role-list {
+  flex-wrap: wrap;
+}
+
+.role-chip {
+  background: #e6faf7;
+  border-radius: 999px;
+  color: var(--color-lottie-teal);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.row-actions,
+.modal-actions {
+  justify-content: flex-end;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgba(9, 9, 11, 0.42);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 24px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 40;
+}
+
+.modal-panel {
+  background: var(--color-cloud-white);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: 16px;
+  box-shadow: rgba(0, 0, 0, 0.14) 0 24px 60px;
+  display: grid;
+  gap: 24px;
+  max-width: 520px;
+  padding: 24px;
+  width: min(100%, 520px);
+}
+
+.modal-header {
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  margin-bottom: 0;
+}
+
+.role-check-group {
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.role-check-group .check-label {
+  background: var(--color-ash-white);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .mobile-only {
@@ -486,6 +580,20 @@ select {
   .table-row {
     align-items: stretch;
     grid-template-columns: 1fr;
+  }
+
+  .table-row.user-row {
+    grid-template-columns: 1fr;
+  }
+
+  .row-actions,
+  .modal-actions {
+    justify-content: stretch;
+  }
+
+  .row-actions > *,
+  .modal-actions > * {
+    flex: 1;
   }
 }
 

@@ -34,6 +34,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const tokenKey = "heroes_api_token";
 const roleOptions = ["admin", "editor", "viewer"];
 
+function hasAdminPrivileges(user: User | null) {
+  return Boolean(user?.is_admin || user?.roles.includes("admin"));
+}
+
+function getPrimaryRoleLabel(user: User | null) {
+  if (!user) return "";
+  if (user.roles.length) {
+    return user.roles.join(", ");
+  }
+  return user.is_admin ? "Admin" : "Viewer";
+}
+
 function useAuth() {
   const value = useContext(AuthContext);
   if (!value) {
@@ -191,7 +203,7 @@ function AppShell() {
     { to: "/heroes", label: "Heroes", icon: Swords, adminOnly: false },
     { to: "/missions", label: "Missions", icon: CheckCircle2, adminOnly: false },
     { to: "/users", label: "Users", icon: Users, adminOnly: true },
-  ].filter((item) => !item.adminOnly || user?.is_admin);
+  ].filter((item) => !item.adminOnly || hasAdminPrivileges(user));
 
   return (
     <div className="app-shell">
@@ -229,7 +241,7 @@ function AppShell() {
             <strong>{user?.username}</strong>
           </div>
           <div className="topbar-actions">
-            {user?.is_admin && (
+            {hasAdminPrivileges(user) && (
               <span className="badge">
                 <Shield size={14} />
                 Admin
@@ -246,7 +258,7 @@ function AppShell() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/heroes" element={<HeroesPage />} />
             <Route path="/missions" element={<MissionsPage />} />
-            <Route path="/users" element={user?.is_admin ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/users" element={hasAdminPrivileges(user) ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -265,19 +277,23 @@ function Dashboard() {
     void Promise.all([
       api.listHeroes().then(setHeroes),
       api.listMissions().then(setMissions),
-      user?.is_admin && token ? api.listUsers(token).then(setUsers) : Promise.resolve(),
+      hasAdminPrivileges(user) && token ? api.listUsers(token).then(setUsers) : Promise.resolve(),
     ]);
-  }, [token, user?.is_admin]);
+  }, [token, user]);
 
   const completed = missions.filter((mission) => mission.completed).length;
 
   return (
     <Page title="Dashboard" subtitle="A quick read on the people and work in motion.">
       <div className="metrics-grid">
-        <Metric label="Heroes" value={heroes.length} />
-        <Metric label="Missions" value={missions.length} />
-        <Metric label="Completed" value={completed} />
-        <Metric label={user?.is_admin ? "Users" : "Role"} value={user?.is_admin ? users.length : "Member"} />
+        <Metric label="Heroes" value={heroes.length} to="/heroes" />
+        <Metric label="Missions" value={missions.length} to="/missions" />
+        <Metric label="Completed" value={completed} to="/missions" />
+        <Metric
+          label={hasAdminPrivileges(user) ? "Users" : "Role"}
+          value={hasAdminPrivileges(user) ? users.length : getPrimaryRoleLabel(user)}
+          to={hasAdminPrivileges(user) ? "/users" : undefined}
+        />
       </div>
       <section className="panel">
         <h2>Mission pulse</h2>
@@ -379,7 +395,7 @@ function HeroesPage() {
               <p className="muted">Missions: {hero.mission_ids.length ? hero.mission_ids.join(", ") : "None"}</p>
               <div className="card-actions">
                 <button className="outline-button" onClick={() => updateHero(hero)}>Save</button>
-                {user?.is_admin && <button className="danger-button" onClick={() => deleteHero(hero.id)}>Delete</button>}
+                {hasAdminPrivileges(user) && <button className="danger-button" onClick={() => deleteHero(hero.id)}>Delete</button>}
               </div>
             </article>
           );
@@ -393,7 +409,7 @@ function MissionsPage() {
   const { token, user } = useAuth();
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [form, setForm] = useState({ name: "", difficulty: "5", hero_id: "", completed: false });
+  const [form, setForm] = useState({ name: "", difficulty: "", hero_id: "", completed: false });
   const [editing, setEditing] = useState<Record<number, { name: string; difficulty: string; hero_id: string; completed: boolean }>>({});
   const [error, setError] = useState("");
 
@@ -418,7 +434,7 @@ function MissionsPage() {
         completed: form.completed,
         hero_id: form.hero_id ? Number(form.hero_id) : null,
       });
-      setForm({ name: "", difficulty: "5", hero_id: "", completed: false });
+      setForm({ name: "", difficulty: "", hero_id: "", completed: false });
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create mission");
@@ -471,7 +487,7 @@ function MissionsPage() {
     <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
       <form className="panel form-grid" onSubmit={createMission}>
         <input placeholder="Mission name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required minLength={5} />
-        <input type="number" min={1} max={10} value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value })} />
+        <input placeholder="Difficulty" type="number" min={1} max={10} value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value })} required />
         <select value={form.hero_id} onChange={(event) => setForm({ ...form, hero_id: event.target.value })}>
           <option value="">Unassigned</option>
           {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
@@ -541,7 +557,7 @@ function MissionsPage() {
                   </select>
                   <div className="card-actions">
                     <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
-                    {user?.is_admin && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
+                    {hasAdminPrivileges(user) && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
                   </div>
                 </>
               )}
@@ -556,7 +572,8 @@ function UsersPage() {
   const { token, user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [form, setForm] = useState({ username: "", password: "", is_admin: false, roles: ["viewer"] });
-  const [editing, setEditing] = useState<Record<number, { username: string; password: string; is_admin: boolean; role: string }>>({});
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ username: "", roles: [] as string[] });
   const [error, setError] = useState("");
 
   async function loadUsers() {
@@ -583,26 +600,49 @@ function UsersPage() {
 
   async function deleteUser(id: number) {
     if (!token || id === user?.id) return;
+    const confirmed = window.confirm("Delete this user?");
+    if (!confirmed) return;
     await api.deleteUser(token, id);
     await loadUsers();
   }
 
-  async function updateUser(account: User) {
+  async function updateUser(event: FormEvent) {
+    event.preventDefault();
     if (!token) return;
-    const draft = editing[account.id];
-    if (!draft?.password) {
-      setError("Password is required when updating a user.");
-      return;
-    }
+    if (!editingUser) return;
     setError("");
-    await api.updateUser(token, account.id, {
-      username: draft.username,
-      password: draft.password,
-      is_admin: draft.is_admin,
-      roles: [draft.role],
+    try {
+      await api.updateUser(token, editingUser.id, {
+        username: editForm.username,
+        is_admin: editForm.roles.includes("admin"),
+        roles: editForm.roles,
+      });
+      closeEdit();
+      await loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update user");
+    }
+  }
+
+  function beginEdit(account: User) {
+    setError("");
+    setEditingUser(account);
+    setEditForm({
+      username: account.username,
+      roles: account.roles.length ? account.roles : ["viewer"],
     });
-    setEditing({ ...editing, [account.id]: { ...draft, password: "" } });
-    await loadUsers();
+  }
+
+  function closeEdit() {
+    setEditingUser(null);
+    setEditForm({ username: "", roles: [] });
+  }
+
+  function toggleEditRole(role: string) {
+    const nextRoles = editForm.roles.includes(role)
+      ? editForm.roles.filter((value) => value !== role)
+      : [...editForm.roles, role];
+    setEditForm({ ...editForm, roles: nextRoles });
   }
 
   return (
@@ -621,49 +661,70 @@ function UsersPage() {
         {error && <p className="form-error wide">{error}</p>}
       </form>
       <div className="table-panel">
-        {users.map((account) => {
-          const draft = editing[account.id] ?? {
-            username: account.username,
-            password: "",
-            is_admin: account.is_admin,
-            role: account.roles[0] ?? "viewer",
-          };
-
-          return (
-            <div className="table-row user-row" key={account.id}>
-              <div>
-                <strong>{account.username}</strong>
-                <p className="muted">{account.roles.length ? account.roles.join(", ") : "No roles"}</p>
-              </div>
-              <input
-                value={draft.username}
-                onChange={(event) => setEditing({ ...editing, [account.id]: { ...draft, username: event.target.value } })}
-              />
-              <input
-                type="password"
-                placeholder="New password"
-                value={draft.password}
-                onChange={(event) => setEditing({ ...editing, [account.id]: { ...draft, password: event.target.value } })}
-              />
-              <select value={draft.role} onChange={(event) => setEditing({ ...editing, [account.id]: { ...draft, role: event.target.value } })}>
-                {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-              </select>
-              <label className="check-label">
-                <input
-                  type="checkbox"
-                  checked={draft.is_admin}
-                  onChange={(event) => setEditing({ ...editing, [account.id]: { ...draft, is_admin: event.target.checked } })}
-                />
-                Admin
-              </label>
-              <button className="outline-button" onClick={() => updateUser(account)}>Save</button>
+        <div className="table-row user-row">
+          <strong>Username</strong>
+          <strong>User Roles</strong>
+          <strong>Actions</strong>
+        </div>
+        {users.map((account) => (
+          <div className="table-row user-row" key={account.id}>
+            <strong>{account.username}</strong>
+            <div className="role-list">
+              {account.roles.length
+                ? account.roles.map((role) => <span className="role-chip" key={role}>{role}</span>)
+                : <span className="muted">No roles</span>}
+            </div>
+            <div className="row-actions">
+              <button className="outline-button" onClick={() => beginEdit(account)}>Edit</button>
               <button className="danger-button" disabled={account.id === user?.id} onClick={() => deleteUser(account.id)}>
                 Delete
               </button>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
+      {editingUser && (
+        <div className="modal-backdrop" role="presentation" onClick={closeEdit}>
+          <section className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="edit-user-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">Edit user</p>
+                <h2 id="edit-user-title">{editingUser.username}</h2>
+              </div>
+              <button className="icon-button" onClick={closeEdit} aria-label="Close edit user dialog">
+                <X size={18} />
+              </button>
+            </div>
+            <form className="stack" onSubmit={updateUser}>
+              <label>
+                Username
+                <input
+                  value={editForm.username}
+                  minLength={3}
+                  onChange={(event) => setEditForm({ ...editForm, username: event.target.value })}
+                  required
+                />
+              </label>
+              <div className="role-check-group" aria-label="User roles">
+                {roleOptions.map((role) => (
+                  <label className="check-label" key={role}>
+                    <input
+                      type="checkbox"
+                      checked={editForm.roles.includes(role)}
+                      onChange={() => toggleEditRole(role)}
+                    />
+                    {role}
+                  </label>
+                ))}
+              </div>
+              <div className="modal-actions">
+                <button className="ghost-button" type="button" onClick={closeEdit}>Cancel</button>
+                <button className="primary-button" type="submit">Save user</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </Page>
   );
 }
@@ -683,11 +744,25 @@ function Page({ title, subtitle, children }: { title: string; subtitle: string; 
   );
 }
 
-function Metric({ label, value }: { label: string; value: number | string }) {
-  return (
-    <article className="metric-card">
+function Metric({ label, value, to }: { label: string; value: number | string; to?: string }) {
+  const content = (
+    <>
       <p>{label}</p>
       <strong>{value}</strong>
+    </>
+  );
+
+  if (to) {
+    return (
+      <NavLink className="metric-card metric-link" to={to}>
+        {content}
+      </NavLink>
+    );
+  }
+
+  return (
+    <article className="metric-card">
+      {content}
     </article>
   );
 }

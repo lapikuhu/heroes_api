@@ -6,6 +6,7 @@ import type {
   MissionPayload,
   User,
   UserPayload,
+  UserUpdatePayload,
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -66,7 +67,7 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     }),
-  updateUser: (token: string, id: number, payload: UserPayload) =>
+  updateUser: (token: string, id: number, payload: UserUpdatePayload) =>
     request<User>(`/users/${id}`, {
       method: "PATCH",
       token,

@@ -24,8 +24,18 @@ class UserDelete(SQLModel):
 
 class UserUpdate(SQLModel):
     username: str | None = Field(default=None, index=True, title="Username of the user")
-    password: str | None = Field(default=None, index=True, title="Password of the user")
     is_admin: bool | None = Field(default=None, index=True, title="Is admin")
+    roles: list[str] | None = Field(default=None, title="List of roles for the user")
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        invalid = set(v) - set(FIXED_ROLES)
+        if invalid:
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+        return v
 
 class UserGetByUsername(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)

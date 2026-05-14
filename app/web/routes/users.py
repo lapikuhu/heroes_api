@@ -15,7 +15,7 @@ from typing import Annotated
 
 # Local imports
 from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user, get_current_user
-from schemas.users import UserCreate, UserRead, UserCreatedResponse
+from schemas.users import UserCreate, UserRead, UserCreatedResponse, UserUpdate
 
 from services import users_service
 
@@ -149,7 +149,7 @@ async def get_user_by_username(username: str, session: SessionDep):
               response_model=UserRead, 
               dependencies=[Depends(get_admin_user)], # Only admins can update users, throws 403 if not admin
               status_code=200)
-async def update_user(user_id: int, user_data: UserCreate, session: SessionDep, admin_user: AdminUser):
+async def update_user(user_id: int, user_data: UserUpdate, session: SessionDep, admin_user: AdminUser):
     """Update user information. Only admins can update users.
     Args:
         user_id (int): The ID of the user to update.

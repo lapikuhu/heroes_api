@@ -7,7 +7,7 @@
 from models.users import User
 from models.user_roles import Role
 from repositories import users_repo
-from schemas.users import UserCreate, UserIsAdminResponse
+from schemas.users import UserCreate, UserIsAdminResponse, UserUpdate
 from security import hash_password, verify_password, create_access_token
 from db import AsyncSession
 
@@ -37,11 +37,11 @@ async def create_user_service(user_data: UserCreate, session: AsyncSession, cur_
         )
     return await users_repo.create_user(user, session)
 
-async def update_user_service(user_id: int, user_data: UserCreate, session: AsyncSession, cur_user_is_admin: UserIsAdminResponse) -> User:
+async def update_user_service(user_id: int, user_data: UserUpdate, session: AsyncSession, cur_user_is_admin: UserIsAdminResponse) -> User:
     """Update an existing user's information. Only admins can update users.
     Args:
         user_id (int): The ID of the user to update.
-        user_data (UserCreate): The new data for the user.
+        user_data (UserUpdate): The new data for the user.
         session (AsyncSession): Database session.
         cur_user_is_admin (UserIsAdminResponse): Whether the user performing the update is an admin.
        
@@ -57,10 +57,16 @@ async def update_user_service(user_id: int, user_data: UserCreate, session: Asyn
     if cur_user_is_admin.is_admin is False and user.is_admin is True:
         raise ValueError("Only admins can update other admin users")
     
-    user.username = user_data.username
-    user.hashed_password = hash_password(user_data.password)
-    user.is_admin = user_data.is_admin
-    user.roles = [Role(name=role_name) for role_name in user_data.roles]
+    if user_data.username is not None and user_data.username != user.username:
+        if await users_repo.is_existing_user(user_data.username, session):
+            raise ValueError("Username already exists")
+        user.username = user_data.username
+
+    if user_data.is_admin is not None:
+        user.is_admin = user_data.is_admin
+
+    if user_data.roles is not None:
+        user.roles = [Role(name=role_name) for role_name in user_data.roles]
     
     return await users_repo.update_user(user, session)
 
