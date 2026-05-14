@@ -59,15 +59,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
 
-  async function refreshUser() {
-    if (!token) {
+  async function refreshUser(nextToken = token) {
+    if (!nextToken) {
       setUser(null);
       setLoading(false);
       return;
     }
 
     try {
-      const currentUser = await api.me(token);
+      const currentUser = await api.me(nextToken);
       setUser(currentUser);
     } catch {
       localStorage.removeItem(tokenKey);
@@ -83,9 +83,20 @@ function AuthProvider({ children }: { children: ReactNode }) {
   }, [token]);
 
   async function login(username: string, password: string) {
+    setLoading(true);
     const response = await loginRequest(username, password);
     localStorage.setItem(tokenKey, response.access_token);
-    setToken(response.access_token);
+    try {
+      await refreshUser(response.access_token);
+      setToken(response.access_token);
+    } catch (err) {
+      localStorage.removeItem(tokenKey);
+      setToken(null);
+      setUser(null);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
   }
 
   function logout() {
@@ -648,8 +659,8 @@ function UsersPage() {
   return (
     <Page title="Users" subtitle="Admin-only account creation and cleanup.">
       <form className="panel form-grid" onSubmit={createUser}>
-        <input placeholder="Username" value={form.username} minLength={3} onChange={(event) => setForm({ ...form, username: event.target.value })} required />
-        <input placeholder="Password" type="password" value={form.password} minLength={3} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+        <input placeholder="username" value={form.username} minLength={3} autoComplete="off" onChange={(event) => setForm({ ...form, username: event.target.value })} required />
+        <input placeholder="password" type="password" value={form.password} minLength={3} autoComplete="new-password" onChange={(event) => setForm({ ...form, password: event.target.value })} required />
         <label className="check-label">
           <input type="checkbox" checked={form.is_admin} onChange={(event) => setForm({ ...form, is_admin: event.target.checked })} />
           Admin

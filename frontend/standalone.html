@@ -81,6 +81,7 @@
             setUser(null);
             return;
           }
+          setLoading(true);
           api.me(token)
             .then(setUser)
             .catch(() => {
@@ -97,8 +98,19 @@
           setView("dashboard");
         }
 
+        async function handleToken(nextToken) {
+          setLoading(true);
+          try {
+            const currentUser = await api.me(nextToken);
+            setUser(currentUser);
+            setToken(nextToken);
+          } finally {
+            setLoading(false);
+          }
+        }
+
         if (loading) return <main className="status-page"><p>Loading your console...</p></main>;
-        if (!token) return <Login onToken={setToken} />;
+        if (!token) return <Login onToken={handleToken} />;
 
         return (
           <div className="app-shell">
@@ -146,7 +158,7 @@
           try {
             const response = await api.login(username, password);
             localStorage.setItem(tokenKey, response.access_token);
-            onToken(response.access_token);
+            await onToken(response.access_token);
           } catch (err) {
             setError(err.message);
           }
@@ -189,7 +201,7 @@
           api.heroes().then(setHeroes);
           api.missions().then(setMissions);
           if (hasAdminPrivileges(user)) api.users(token).then(setUsers);
-        }, []);
+        }, [token, user]);
         const complete = missions.filter((mission) => mission.completed).length;
         return (
           <Page title="Dashboard" subtitle="A quick read on the people and work in motion.">
@@ -464,8 +476,8 @@
         return (
           <Page title="Users" subtitle="Admin-only account creation and cleanup.">
             <form className="panel form-grid" onSubmit={create}>
-              <input placeholder="Username" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
-              <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <input placeholder="username" value={form.username} autoComplete="off" onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+              <input type="password" placeholder="password" value={form.password} autoComplete="new-password" onChange={(e) => setForm({ ...form, password: e.target.value })} required />
               <select value={form.roles[0]} onChange={(e) => setForm({ ...form, roles: [e.target.value] })}>{roles.map((role) => <option key={role}>{role}</option>)}</select>
               <label className="check-label"><input type="checkbox" checked={form.is_admin} onChange={(e) => setForm({ ...form, is_admin: e.target.checked })} />Admin</label>
               <button className="primary-button">Create user</button>
