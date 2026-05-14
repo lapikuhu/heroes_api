@@ -10,6 +10,7 @@ class HeroCreate(SQLModel):
 
 class HeroUpdate(SQLModel):
     name: str | None = Field(default=None, title="Name of the hero")
+    power: str | None = Field(default=None, title="Power of the hero")
     age: int | None = Field(default=None, title="Age of the hero")
 
 ### - Model Response Schemas - ###

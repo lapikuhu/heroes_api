@@ -298,7 +298,7 @@ function HeroesPage() {
   const { token, user } = useAuth();
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [form, setForm] = useState({ name: "", power: "", age: "" });
-  const [editing, setEditing] = useState<Record<number, { name: string; age: string }>>({});
+  const [editing, setEditing] = useState<Record<number, { name: string; power: string; age: string }>>({});
   const [error, setError] = useState("");
 
   async function loadHeroes() {
@@ -331,6 +331,7 @@ function HeroesPage() {
     const next = editing[hero.id];
     await api.updateHero(token, hero.id, {
       name: next.name,
+      power: next.power,
       age: next.age ? Number(next.age) : null,
     });
     await loadHeroes();
@@ -353,17 +354,27 @@ function HeroesPage() {
       </form>
       <div className="resource-grid">
         {heroes.map((hero) => {
-          const draft = editing[hero.id] ?? { name: hero.name, age: hero.age?.toString() ?? "" };
+          const draft = editing[hero.id] ?? { name: hero.name, power: hero.power, age: hero.age?.toString() ?? "" };
           return (
             <article className="resource-card" key={hero.id}>
               <div>
                 <p className="eyebrow">#{hero.id}</p>
                 <h2>{hero.name}</h2>
-                <p>{hero.power}</p>
+                {!editing[hero.id] && <p>{hero.power}</p>}
               </div>
               <div className="inline-fields">
-                <input value={draft.name} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, name: event.target.value } })} />
-                <input type="number" placeholder="Age" value={draft.age} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, age: event.target.value } })} />
+                <label>
+                  Name
+                  <input value={draft.name} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, name: event.target.value } })} />
+                </label>
+                <label>
+                  Power
+                  <input value={draft.power} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, power: event.target.value } })} />
+                </label>
+                <label>
+                  Age
+                  <input type="number" value={draft.age} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, age: event.target.value } })} />
+                </label>
               </div>
               <p className="muted">Missions: {hero.mission_ids.length ? hero.mission_ids.join(", ") : "None"}</p>
               <div className="card-actions">
@@ -383,6 +394,7 @@ function MissionsPage() {
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [form, setForm] = useState({ name: "", difficulty: "5", hero_id: "", completed: false });
+  const [editing, setEditing] = useState<Record<number, { name: string; difficulty: string; hero_id: string; completed: boolean }>>({});
   const [error, setError] = useState("");
 
   async function loadData() {
@@ -425,6 +437,36 @@ function MissionsPage() {
     await loadData();
   }
 
+  function beginEdit(mission: Mission) {
+    setEditing({
+      ...editing,
+      [mission.id]: {
+        name: mission.name,
+        difficulty: mission.difficulty.toString(),
+        hero_id: mission.hero_id?.toString() ?? "",
+        completed: mission.completed,
+      },
+    });
+  }
+
+  function cancelEdit(id: number) {
+    const next = { ...editing };
+    delete next[id];
+    setEditing(next);
+  }
+
+  async function saveEdit(id: number) {
+    const draft = editing[id];
+    if (!draft) return;
+    await patchMission(id, {
+      name: draft.name,
+      difficulty: Number(draft.difficulty),
+      completed: draft.completed,
+      hero_id: draft.hero_id ? Number(draft.hero_id) : null,
+    });
+    cancelEdit(id);
+  }
+
   return (
     <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
       <form className="panel form-grid" onSubmit={createMission}>
@@ -442,32 +484,74 @@ function MissionsPage() {
         {error && <p className="form-error wide">{error}</p>}
       </form>
       <div className="table-panel">
-        {missions.map((mission) => (
-          <div className="table-row" key={mission.id}>
-            <div>
-              <strong>{mission.name}</strong>
-              <p className="muted">Difficulty {mission.difficulty} · Hero {mission.hero_id ?? "unassigned"}</p>
+        {missions.map((mission) => {
+          const draft = editing[mission.id];
+
+          return (
+            <div className="table-row" key={mission.id}>
+              {draft ? (
+                <>
+                  <div className="stack">
+                    <label>
+                      Mission name
+                      <input value={draft.name} onChange={(event) => setEditing({ ...editing, [mission.id]: { ...draft, name: event.target.value } })} />
+                    </label>
+                    <label>
+                      Difficulty
+                      <input type="number" min={1} max={10} value={draft.difficulty} onChange={(event) => setEditing({ ...editing, [mission.id]: { ...draft, difficulty: event.target.value } })} />
+                    </label>
+                  </div>
+                  <label>
+                    Assigned hero
+                    <select value={draft.hero_id} onChange={(event) => setEditing({ ...editing, [mission.id]: { ...draft, hero_id: event.target.value } })}>
+                      <option value="">Unassigned</option>
+                      {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="check-label">
+                    <input
+                      type="checkbox"
+                      checked={draft.completed}
+                      onChange={(event) => setEditing({ ...editing, [mission.id]: { ...draft, completed: event.target.checked } })}
+                    />
+                    Complete
+                  </label>
+                  <div className="card-actions">
+                    <button className="outline-button" onClick={() => saveEdit(mission.id)}>Save</button>
+                    <button className="ghost-button" onClick={() => cancelEdit(mission.id)}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <strong>{mission.name}</strong>
+                    <p className="muted">Difficulty {mission.difficulty} | Hero {mission.hero_id ?? "unassigned"}</p>
+                  </div>
+                  <label className="check-label">
+                    <input
+                      type="checkbox"
+                      checked={mission.completed}
+                      onChange={(event) => patchMission(mission.id, { completed: event.target.checked })}
+                    />
+                    Complete
+                  </label>
+                  <select value={mission.hero_id ?? ""} onChange={(event) => patchMission(mission.id, { hero_id: event.target.value ? Number(event.target.value) : null })}>
+                    <option value="">Unassigned</option>
+                    {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+                  </select>
+                  <div className="card-actions">
+                    <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
+                    {user?.is_admin && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
+                  </div>
+                </>
+              )}
             </div>
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={mission.completed}
-                onChange={(event) => patchMission(mission.id, { completed: event.target.checked })}
-              />
-              Complete
-            </label>
-            <select value={mission.hero_id ?? ""} onChange={(event) => patchMission(mission.id, { hero_id: event.target.value ? Number(event.target.value) : null })}>
-              <option value="">Unassigned</option>
-              {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-            </select>
-            {user?.is_admin && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Page>
   );
 }
-
 function UsersPage() {
   const { token, user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -627,3 +711,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

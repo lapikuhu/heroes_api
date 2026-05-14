@@ -19,8 +19,10 @@ async def lifespan(app: FastAPI):
 
     print("Shutting down application... [OK]")
 
+# Instantiate the FastAPI application with the lifespan handler
 app = FastAPI(title="Heroes Fast API app", lifespan=lifespan, tags=["app"])
 
+# Middleware for React/VITE frontend development - allows cross-origin requests from the specified origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

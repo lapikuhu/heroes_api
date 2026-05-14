@@ -204,13 +204,39 @@
       function Heroes({ token, user }) {
         const [heroes, setHeroes] = useState([]);
         const [form, setForm] = useState({ name: "", power: "", age: "" });
+        const [editing, setEditing] = useState({});
+        const [error, setError] = useState("");
         const load = () => api.heroes().then(setHeroes);
         useEffect(() => { load(); }, []);
         async function create(event) {
           event.preventDefault();
+          setError("");
           await api.createHero(token, { name: form.name, power: form.power, age: form.age ? Number(form.age) : null });
           setForm({ name: "", power: "", age: "" });
-          load();
+          await load();
+        }
+        function beginEdit(hero) {
+          setEditing({
+            ...editing,
+            [hero.id]: { name: hero.name, power: hero.power, age: hero.age?.toString() ?? "" },
+          });
+        }
+        function cancelEdit(id) {
+          const next = { ...editing };
+          delete next[id];
+          setEditing(next);
+        }
+        async function saveEdit(hero) {
+          const draft = editing[hero.id];
+          if (!draft) return;
+          setError("");
+          await api.updateHero(token, hero.id, {
+            name: draft.name,
+            power: draft.power,
+            age: draft.age ? Number(draft.age) : null,
+          });
+          cancelEdit(hero.id);
+          await load();
         }
         return (
           <Page title="Heroes" subtitle="Create and maintain the roster.">
@@ -219,9 +245,53 @@
               <input placeholder="Power" value={form.power} onChange={(e) => setForm({ ...form, power: e.target.value })} required />
               <input placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
               <button className="primary-button">Create hero</button>
+              {error && <p className="form-error wide">{error}</p>}
             </form>
             <div className="resource-grid">
-              {heroes.map((hero) => <article className="resource-card" key={hero.id}><h2>{hero.name}</h2><p>{hero.power}</p><p className="muted">Age: {hero.age || "unknown"}</p>{user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); load(); }}>Delete</button>}</article>)}
+              {heroes.map((hero) => {
+                const draft = editing[hero.id];
+                return (
+                  <article className="resource-card" key={hero.id}>
+                    <div>
+                      <p className="eyebrow">#{hero.id}</p>
+                      <h2>{hero.name}</h2>
+                      {!draft && <p>{hero.power}</p>}
+                    </div>
+                    {draft ? (
+                      <div className="inline-fields">
+                        <label>
+                          Name
+                          <input value={draft.name} onChange={(e) => setEditing({ ...editing, [hero.id]: { ...draft, name: e.target.value } })} />
+                        </label>
+                        <label>
+                          Power
+                          <input value={draft.power} onChange={(e) => setEditing({ ...editing, [hero.id]: { ...draft, power: e.target.value } })} />
+                        </label>
+                        <label>
+                          Age
+                          <input type="number" value={draft.age} onChange={(e) => setEditing({ ...editing, [hero.id]: { ...draft, age: e.target.value } })} />
+                        </label>
+                      </div>
+                    ) : (
+                      <p className="muted">Age: {hero.age ?? "unknown"}</p>
+                    )}
+                    <p className="muted">Missions: {hero.mission_ids.length ? hero.mission_ids.join(", ") : "None"}</p>
+                    <div className="card-actions">
+                      {draft ? (
+                        <>
+                          <button className="outline-button" onClick={() => saveEdit(hero)}>Save</button>
+                          <button className="ghost-button" onClick={() => cancelEdit(hero.id)}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="outline-button" onClick={() => beginEdit(hero)}>Edit</button>
+                          {user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); await load(); }}>Delete</button>}
+                        </>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </Page>
         );
@@ -231,6 +301,7 @@
         const [missions, setMissions] = useState([]);
         const [heroes, setHeroes] = useState([]);
         const [form, setForm] = useState({ name: "", difficulty: 5, hero_id: "", completed: false });
+        const [editing, setEditing] = useState({});
         const load = () => Promise.all([api.missions().then(setMissions), api.heroes().then(setHeroes)]);
         useEffect(() => { load(); }, []);
         async function create(event) {
@@ -238,6 +309,34 @@
           await api.createMission(token, { ...form, difficulty: Number(form.difficulty), hero_id: form.hero_id ? Number(form.hero_id) : null });
           setForm({ name: "", difficulty: 5, hero_id: "", completed: false });
           load();
+        }
+        function beginEdit(mission) {
+          setEditing({
+            ...editing,
+            [mission.id]: {
+              name: mission.name,
+              difficulty: mission.difficulty.toString(),
+              hero_id: mission.hero_id?.toString() ?? "",
+              completed: mission.completed,
+            },
+          });
+        }
+        function cancelEdit(id) {
+          const next = { ...editing };
+          delete next[id];
+          setEditing(next);
+        }
+        async function saveEdit(id) {
+          const draft = editing[id];
+          if (!draft) return;
+          await api.updateMission(token, id, {
+            name: draft.name,
+            difficulty: Number(draft.difficulty),
+            hero_id: draft.hero_id ? Number(draft.hero_id) : null,
+            completed: draft.completed,
+          });
+          cancelEdit(id);
+          await load();
         }
         return (
           <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
@@ -248,12 +347,58 @@
               <button className="primary-button">Create mission</button>
             </form>
             <div className="table-panel">
-              {missions.map((mission) => <div className="table-row" key={mission.id}><strong>{mission.name}</strong><span>Difficulty {mission.difficulty}</span><button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); load(); }}>{mission.completed ? "Complete" : "Open"}</button>{user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); load(); }}>Delete</button>}</div>)}
+              {missions.map((mission) => {
+                const draft = editing[mission.id];
+                return (
+                  <div className="table-row" key={mission.id}>
+                    {draft ? (
+                      <>
+                        <div className="stack">
+                          <label>
+                            Mission name
+                            <input value={draft.name} onChange={(e) => setEditing({ ...editing, [mission.id]: { ...draft, name: e.target.value } })} />
+                          </label>
+                          <label>
+                            Difficulty
+                            <input type="number" min="1" max="10" value={draft.difficulty} onChange={(e) => setEditing({ ...editing, [mission.id]: { ...draft, difficulty: e.target.value } })} />
+                          </label>
+                        </div>
+                        <label>
+                          Assigned hero
+                          <select value={draft.hero_id} onChange={(e) => setEditing({ ...editing, [mission.id]: { ...draft, hero_id: e.target.value } })}>
+                            <option value="">Unassigned</option>
+                            {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+                          </select>
+                        </label>
+                        <label className="check-label">
+                          <input type="checkbox" checked={draft.completed} onChange={(e) => setEditing({ ...editing, [mission.id]: { ...draft, completed: e.target.checked } })} />
+                          Complete
+                        </label>
+                        <div className="card-actions">
+                          <button className="outline-button" onClick={() => saveEdit(mission.id)}>Save</button>
+                          <button className="ghost-button" onClick={() => cancelEdit(mission.id)}>Cancel</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <strong>{mission.name}</strong>
+                          <p className="muted">Difficulty {mission.difficulty} | Hero {mission.hero_id ?? "unassigned"}</p>
+                        </div>
+                        <button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); await load(); }}>{mission.completed ? "Complete" : "Open"}</button>
+                        <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
+                        <div className="card-actions">
+                          {user?.is_admin && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); await load(); }}>Delete</button>}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </Page>
         );
       }
-
       function Users({ token, currentUser }) {
         const [users, setUsers] = useState([]);
         const [form, setForm] = useState({ username: "", password: "", is_admin: false, roles: ["viewer"] });
@@ -285,3 +430,4 @@
     </script>
   </body>
 </html>
+

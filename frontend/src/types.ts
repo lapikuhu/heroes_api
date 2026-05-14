@@ -36,6 +36,7 @@ export type HeroCreatePayload = {
 
 export type HeroUpdatePayload = {
   name?: string;
+  power?: string;
   age?: number | null;
 };
 
