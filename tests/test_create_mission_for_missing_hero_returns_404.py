@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
  hero returns a 404 Not Found response."""
 
 async def test_create_mission_for_missing_hero_returns_404(app: FastAPI, auth_mock_user):
-    auth_user = await auth_mock_user()
+    auth_user = await auth_mock_user(roles=["editor"])
     token = auth_user["access_token"]
     async with AsyncClient(
         base_url="http://testserver",

@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 async def test_update_mission_can_patch_completed_only(app: FastAPI, auth_mock_user):
-    auth_user = await auth_mock_user()
+    auth_user = await auth_mock_user(roles=["editor"])
 
     async with AsyncClient(
         base_url="http://testserver",

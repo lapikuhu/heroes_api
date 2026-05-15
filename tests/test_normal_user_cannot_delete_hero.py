@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 403 Forbidden response when attempting to do so."""
 
 async def test_normal_user_cannot_delete_hero(app: FastAPI, auth_mock_user, ):
-    auth_user = await auth_mock_user()
+    auth_user = await auth_mock_user(roles=["editor"])
     token = auth_user["access_token"]
     async with AsyncClient(
         base_url="http://testserver",

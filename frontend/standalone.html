@@ -23,7 +23,9 @@
       const apiBaseUrl = localStorage.getItem("heroes_api_base_url") || "http://127.0.0.1:8000";
       const tokenKey = "heroes_api_token";
       const roles = ["admin", "editor", "viewer"];
-      const hasAdminPrivileges = (user) => Boolean(user?.is_admin || user?.roles?.includes("admin"));
+      const canAdmin = (user) => Boolean(user?.is_admin || user?.roles?.includes("admin"));
+      const canViewContent = (user) => Boolean(user && (canAdmin(user) || user.roles?.some((role) => ["viewer", "editor"].includes(role))));
+      const canEditContent = (user) => Boolean(user && (canAdmin(user) || user.roles?.includes("editor")));
       const getPrimaryRoleLabel = (user) => {
         if (!user) return "";
         if (user.roles?.length) return user.roles.join(", ");
@@ -55,8 +57,8 @@
           });
         },
         me: (token) => request("/users/me", { token }),
-        heroes: () => request("/heroes/"),
-        missions: () => request("/missions/"),
+        heroes: (token) => request("/heroes/", { token }),
+        missions: (token) => request("/missions/", { token }),
         users: (token) => request("/users/", { token }),
         createHero: (token, payload) => request("/heroes/", { method: "POST", token, body: JSON.stringify(payload) }),
         updateHero: (token, id, payload) => request(`/heroes/${id}`, { method: "PATCH", token, body: JSON.stringify(payload) }),
@@ -109,7 +111,7 @@
           }
         }
 
-        if (loading) return <main className="status-page"><p>Loading your console...</p></main>;
+        if (loading || (token && !user)) return <main className="status-page"><p>Loading your console...</p></main>;
         if (!token) return <Login onToken={handleToken} />;
 
         return (
@@ -119,10 +121,10 @@
                 <div className="brand-mark compact"><span>Heroes</span></div>
               </div>
               <nav className="sidebar-nav">
-                {["dashboard", "heroes", "missions"].map((item) => (
+                {["dashboard", "heroes", "missions"].filter((item) => item === "dashboard" || canViewContent(user)).map((item) => (
                   <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item}</button>
                 ))}
-                {hasAdminPrivileges(user) && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
+                {canAdmin(user) && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
               </nav>
             </aside>
             <div className="shell-main">
@@ -132,15 +134,15 @@
                   <strong>{user?.username}</strong>
                 </div>
                 <div className="topbar-actions">
-                  {hasAdminPrivileges(user) && <span className="badge">Admin</span>}
+                  {canAdmin(user) && <span className="badge">Admin</span>}
                   <button className="ghost-button" onClick={logout}>Logout</button>
                 </div>
               </header>
               <main className="content">
                 {view === "dashboard" && <Dashboard token={token} user={user} setView={setView} />}
-                {view === "heroes" && <Heroes token={token} user={user} />}
-                {view === "missions" && <Missions token={token} user={user} />}
-                {view === "users" && hasAdminPrivileges(user) && <Users token={token} currentUser={user} />}
+                {view === "heroes" && canViewContent(user) && <Heroes token={token} user={user} />}
+                {view === "missions" && canViewContent(user) && <Missions token={token} user={user} />}
+                {view === "users" && canAdmin(user) && <Users token={token} currentUser={user} />}
               </main>
             </div>
           </div>
@@ -197,10 +199,13 @@
         const [heroes, setHeroes] = useState([]);
         const [missions, setMissions] = useState([]);
         const [users, setUsers] = useState([]);
+        const [error, setError] = useState("");
         useEffect(() => {
-          api.heroes().then(setHeroes);
-          api.missions().then(setMissions);
-          if (hasAdminPrivileges(user)) api.users(token).then(setUsers);
+          if (!token || !canViewContent(user)) return;
+          setError("");
+          api.heroes(token).then((data) => setHeroes(Array.isArray(data) ? data : data?.value ?? [])).catch((err) => setError(`Heroes: ${err.message}`));
+          api.missions(token).then((data) => setMissions(Array.isArray(data) ? data : data?.value ?? [])).catch((err) => setError(`Missions: ${err.message}`));
+          if (canAdmin(user)) api.users(token).then(setUsers).catch((err) => setError(`Users: ${err.message}`));
         }, [token, user]);
         const complete = missions.filter((mission) => mission.completed).length;
         return (
@@ -210,11 +215,12 @@
               <Metric label="Missions" value={missions.length} onClick={() => setView("missions")} />
               <Metric label="Completed" value={complete} onClick={() => setView("missions")} />
               <Metric
-                label={hasAdminPrivileges(user) ? "Users" : "Role"}
-                value={hasAdminPrivileges(user) ? users.length : getPrimaryRoleLabel(user)}
-                onClick={hasAdminPrivileges(user) ? () => setView("users") : undefined}
+                label={canAdmin(user) ? "Users" : "Role"}
+                value={canAdmin(user) ? users.length : getPrimaryRoleLabel(user)}
+                onClick={canAdmin(user) ? () => setView("users") : undefined}
               />
             </div>
+            {error && <p className="form-error">{error}</p>}
           </Page>
         );
       }
@@ -227,20 +233,24 @@
       }
 
       function Heroes({ token, user }) {
+        const canEdit = canEditContent(user);
+        const canDelete = canAdmin(user);
         const [heroes, setHeroes] = useState([]);
         const [form, setForm] = useState({ name: "", power: "", age: "" });
         const [editing, setEditing] = useState({});
         const [error, setError] = useState("");
-        const load = () => api.heroes().then(setHeroes);
-        useEffect(() => { load(); }, []);
+        const load = () => api.heroes(token).then((data) => setHeroes(Array.isArray(data) ? data : data?.value ?? [])).catch((err) => setError(err.message));
+        useEffect(() => { load(); }, [token]);
         async function create(event) {
           event.preventDefault();
+          if (!canEdit) return;
           setError("");
           await api.createHero(token, { name: form.name, power: form.power, age: form.age ? Number(form.age) : null });
           setForm({ name: "", power: "", age: "" });
           await load();
         }
         function beginEdit(hero) {
+          if (!canEdit) return;
           setEditing({
             ...editing,
             [hero.id]: { name: hero.name, power: hero.power, age: hero.age?.toString() ?? "" },
@@ -252,6 +262,7 @@
           setEditing(next);
         }
         async function saveEdit(hero) {
+          if (!canEdit) return;
           const draft = editing[hero.id];
           if (!draft) return;
           setError("");
@@ -265,13 +276,15 @@
         }
         return (
           <Page title="Heroes" subtitle="Create and maintain the roster.">
-            <form className="panel form-grid" onSubmit={create}>
-              <input placeholder="Hero name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <input placeholder="Power" value={form.power} onChange={(e) => setForm({ ...form, power: e.target.value })} required />
-              <input placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-              <button className="primary-button">Create hero</button>
-              {error && <p className="form-error wide">{error}</p>}
-            </form>
+            {canEdit && (
+              <form className="panel form-grid" onSubmit={create}>
+                <input placeholder="Hero name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <input placeholder="Power" value={form.power} onChange={(e) => setForm({ ...form, power: e.target.value })} required />
+                <input placeholder="Age" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+                <button className="primary-button">Create hero</button>
+                {error && <p className="form-error wide">{error}</p>}
+              </form>
+            )}
             <div className="resource-grid">
               {heroes.map((hero) => {
                 const draft = editing[hero.id];
@@ -301,7 +314,7 @@
                       <p className="muted">Age: {hero.age ?? "unknown"}</p>
                     )}
                     <p className="muted">Missions: {hero.mission_ids.length ? hero.mission_ids.join(", ") : "None"}</p>
-                    <div className="card-actions">
+                    {(canEdit || canDelete) && <div className="card-actions">
                       {draft ? (
                         <>
                           <button className="outline-button" onClick={() => saveEdit(hero)}>Save</button>
@@ -309,11 +322,11 @@
                         </>
                       ) : (
                         <>
-                          <button className="outline-button" onClick={() => beginEdit(hero)}>Edit</button>
-                          {hasAdminPrivileges(user) && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); await load(); }}>Delete</button>}
+                          {canEdit && <button className="outline-button" onClick={() => beginEdit(hero)}>Edit</button>}
+                          {canDelete && <button className="danger-button" onClick={async () => { await api.deleteHero(token, hero.id); await load(); }}>Delete</button>}
                         </>
                       )}
-                    </div>
+                    </div>}
                   </article>
                 );
               })}
@@ -323,19 +336,30 @@
       }
 
       function Missions({ token, user }) {
+        const canEdit = canEditContent(user);
+        const canDelete = canAdmin(user);
         const [missions, setMissions] = useState([]);
         const [heroes, setHeroes] = useState([]);
         const [form, setForm] = useState({ name: "", difficulty: "", hero_id: "", completed: false });
         const [editing, setEditing] = useState({});
-        const load = () => Promise.all([api.missions().then(setMissions), api.heroes().then(setHeroes)]);
-        useEffect(() => { load(); }, []);
+        const [error, setError] = useState("");
+        const load = () => {
+          setError("");
+          return Promise.all([
+            api.missions(token).then((data) => setMissions(Array.isArray(data) ? data : data?.value ?? [])).catch((err) => setError(`Missions: ${err.message}`)),
+            api.heroes(token).then((data) => setHeroes(Array.isArray(data) ? data : data?.value ?? [])).catch((err) => setError(`Heroes: ${err.message}`)),
+          ]);
+        };
+        useEffect(() => { load(); }, [token]);
         async function create(event) {
           event.preventDefault();
+          if (!canEdit) return;
           await api.createMission(token, { ...form, difficulty: Number(form.difficulty), hero_id: form.hero_id ? Number(form.hero_id) : null });
           setForm({ name: "", difficulty: "", hero_id: "", completed: false });
           load();
         }
         function beginEdit(mission) {
+          if (!canEdit) return;
           setEditing({
             ...editing,
             [mission.id]: {
@@ -352,6 +376,7 @@
           setEditing(next);
         }
         async function saveEdit(id) {
+          if (!canEdit) return;
           const draft = editing[id];
           if (!draft) return;
           await api.updateMission(token, id, {
@@ -365,12 +390,15 @@
         }
         return (
           <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
-            <form className="panel form-grid" onSubmit={create}>
-              <input placeholder="Mission name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              <input type="number" min="1" max="10" placeholder="Difficulty" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} required />
-              <select value={form.hero_id} onChange={(e) => setForm({ ...form, hero_id: e.target.value })}><option value="">Unassigned</option>{heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}</select>
-              <button className="primary-button">Create mission</button>
-            </form>
+            {canEdit && (
+              <form className="panel form-grid" onSubmit={create}>
+                <input placeholder="Mission name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <input type="number" min="1" max="10" placeholder="Difficulty" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })} required />
+                <select value={form.hero_id} onChange={(e) => setForm({ ...form, hero_id: e.target.value })}><option value="">Unassigned</option>{heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}</select>
+                <button className="primary-button">Create mission</button>
+              </form>
+            )}
+            {error && <p className="form-error">{error}</p>}
             <div className="table-panel">
               {missions.map((mission) => {
                 const draft = editing[mission.id];
@@ -410,11 +438,13 @@
                           <strong>{mission.name}</strong>
                           <p className="muted">Difficulty {mission.difficulty} | Hero {mission.hero_id ?? "unassigned"}</p>
                         </div>
-                        <button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); await load(); }}>{mission.completed ? "Complete" : "Open"}</button>
-                        <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
-                        <div className="card-actions">
-                          {hasAdminPrivileges(user) && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); await load(); }}>Delete</button>}
-                        </div>
+                        {canEdit && <button className="outline-button" onClick={async () => { await api.updateMission(token, mission.id, { completed: !mission.completed }); await load(); }}>{mission.completed ? "Complete" : "Open"}</button>}
+                        {canEdit && <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>}
+                        {(canEdit || canDelete) && (
+                          <div className="card-actions">
+                            {canDelete && <button className="danger-button" onClick={async () => { await api.deleteMission(token, mission.id); await load(); }}>Delete</button>}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

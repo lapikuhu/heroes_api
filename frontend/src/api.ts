@@ -78,7 +78,7 @@ export const api = {
       method: "DELETE",
       token,
     }),
-  listHeroes: () => request<Hero[]>("/heroes/"),
+  listHeroes: (token: string) => request<Hero[]>("/heroes/", { token }),
   createHero: (token: string, payload: HeroCreatePayload) =>
     request<Hero>("/heroes/", {
       method: "POST",
@@ -96,7 +96,7 @@ export const api = {
       method: "DELETE",
       token,
     }),
-  listMissions: () => request<Mission[]>("/missions/"),
+  listMissions: (token: string) => request<Mission[]>("/missions/", { token }),
   createMission: (token: string, payload: MissionPayload) =>
     request<Mission>("/missions/", {
       method: "POST",

@@ -69,6 +69,8 @@ def create_mock_user(app: FastAPI):
         username: str = "testname1",
         email: str = "testname1@example.com",
         password: str = "password123",
+        roles: list[str] | None = None,
+        is_admin: bool = False,
     ):
         previous_admin_override = app.dependency_overrides.get(get_admin_user)
 
@@ -88,6 +90,8 @@ def create_mock_user(app: FastAPI):
                         "username": username,
                         "email": email,
                         "password": password,
+                        "roles": roles or [],
+                        "is_admin": is_admin,
                     },
                 )
         finally:
@@ -117,11 +121,15 @@ def auth_mock_user(app: FastAPI, create_mock_user):
         username: str = "testname1",
         email: str = "testname1@example.com",
         password: str = "password123",
+        roles: list[str] | None = None,
+        is_admin: bool = False,
     ):
         user = await create_mock_user(
             username=username,
             email=email,
             password=password,
+            roles=roles,
+            is_admin=is_admin,
         )
 
         async with AsyncClient(

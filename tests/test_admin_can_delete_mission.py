@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 This test creates a mission, then attempts to delete it using an admin user's credentials."""
 
 async def test_admin_can_delete_mission(app: FastAPI, auth_mock_user, admin_override):
-    auth_user = await auth_mock_user() # login the admin user to get the token
+    auth_user = await auth_mock_user(roles=["admin"], is_admin=True)
     token = auth_user["access_token"]
 
     async with AsyncClient(

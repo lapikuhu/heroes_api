@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 
-from dependencies import SessionDep, get_current_user, get_admin_user
+from dependencies import EditorUser, SessionDep, ViewerUser, get_admin_user
 from services import heroes_service
 from schemas.heroes import HeroCreate, HeroRead, HeroUpdate
 router = APIRouter(prefix="/heroes", tags=["heroes"])
@@ -10,11 +10,10 @@ router = APIRouter(prefix="/heroes", tags=["heroes"])
 ### ------------------------- CREATE HERO -------------------------- ###
 
 @router.post("/", tags=['heroes'], 
-             dependencies=[Depends(get_current_user)], # Authenticated users can create heroes, throws 401 if not authenticated
              response_model=HeroRead, 
              status_code=201)
-async def create_hero(hero: HeroCreate, session: SessionDep):
-    """Create a new hero. Requires authentication.
+async def create_hero(hero: HeroCreate, session: SessionDep, editor_user: EditorUser):
+    """Create a new hero. Requires editor or admin access.
     Args:
         hero (HeroCreate): The hero data to create.
         session (SessionDep): The database session dependency.
@@ -26,11 +25,10 @@ async def create_hero(hero: HeroCreate, session: SessionDep):
 ### --------------------- LIST OF ALL HEROES ----------------------- ###
 
 @router.get("/", tags=['heroes'], 
-            dependencies=None, # Public endpoint, no authentication required
             response_model=list[HeroRead], 
             status_code=200)
-async def read_all_heroes(session: SessionDep):
-    """Get a list of all heroes. Public endpoint, no authentication required.
+async def read_all_heroes(session: SessionDep, viewer_user: ViewerUser):
+    """Get a list of all heroes. Requires viewer, editor, or admin access.
     Args:
         session (SessionDep): The database session dependency.
     Returns:
@@ -40,12 +38,12 @@ async def read_all_heroes(session: SessionDep):
 
 ### ----------------------- GET HERO BY ID ------------------------- ###
 
-@router.get("/{hero_id}", dependencies=None,
+@router.get("/{hero_id}",
             tags=['heroes'], 
             response_model=HeroRead, 
             status_code=200)
-async def read_hero(hero_id: int, session: SessionDep):
-    """Get a hero by ID. Public endpoint, no authentication required.
+async def read_hero(hero_id: int, session: SessionDep, viewer_user: ViewerUser):
+    """Get a hero by ID. Requires viewer, editor, or admin access.
     Args:
         hero_id (int): The ID of the hero to retrieve.
         session (SessionDep): The database session dependency.
@@ -61,11 +59,10 @@ async def read_hero(hero_id: int, session: SessionDep):
 ### --------------------- UPDATE HERO BY ID ----------------------- ###
 
 @router.patch("/{hero_id}", tags=['heroes'], 
-              dependencies=[Depends(get_current_user)], # Authenticated users can update heroes, throws 401 if not authenticated
               response_model=HeroRead, 
               status_code=200)
-async def update_hero(hero_id: int, hero_update: HeroUpdate, session: SessionDep):
-    """Update a hero by ID. Requires authentication.
+async def update_hero(hero_id: int, hero_update: HeroUpdate, session: SessionDep, editor_user: EditorUser):
+    """Update a hero by ID. Requires editor or admin access.
     Args:
         hero_id (int): The ID of the hero to update.
         hero_update (HeroUpdate): The hero data to update.

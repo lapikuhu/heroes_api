@@ -6,7 +6,7 @@ from httpx import AsyncClient, ASGITransport
 
 # Attempt to create a hero with the token -> assert 201 Created and correct response body
 async def test_create_hero_with_token(app: FastAPI, auth_mock_user):
-    auth_user = await auth_mock_user()
+    auth_user = await auth_mock_user(roles=["editor"])
     token = auth_user["access_token"]
     async with AsyncClient(
         base_url="http://testserver",

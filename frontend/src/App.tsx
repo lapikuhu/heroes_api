@@ -34,8 +34,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const tokenKey = "heroes_api_token";
 const roleOptions = ["admin", "editor", "viewer"];
 
-function hasAdminPrivileges(user: User | null) {
+function canAdmin(user: User | null) {
   return Boolean(user?.is_admin || user?.roles.includes("admin"));
+}
+
+function canViewContent(user: User | null) {
+  return Boolean(user && (canAdmin(user) || user.roles.some((role) => ["viewer", "editor"].includes(role))));
+}
+
+function canEditContent(user: User | null) {
+  return Boolean(user && (canAdmin(user) || user.roles.includes("editor")));
 }
 
 function getPrimaryRoleLabel(user: User | null) {
@@ -210,11 +218,11 @@ function AppShell() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navItems = [
-    { to: "/dashboard", label: "Dashboard", icon: Gauge, adminOnly: false },
-    { to: "/heroes", label: "Heroes", icon: Swords, adminOnly: false },
-    { to: "/missions", label: "Missions", icon: CheckCircle2, adminOnly: false },
-    { to: "/users", label: "Users", icon: Users, adminOnly: true },
-  ].filter((item) => !item.adminOnly || hasAdminPrivileges(user));
+    { to: "/dashboard", label: "Dashboard", icon: Gauge, contentOnly: false, adminOnly: false },
+    { to: "/heroes", label: "Heroes", icon: Swords, contentOnly: true, adminOnly: false },
+    { to: "/missions", label: "Missions", icon: CheckCircle2, contentOnly: true, adminOnly: false },
+    { to: "/users", label: "Users", icon: Users, contentOnly: false, adminOnly: true },
+  ].filter((item) => (!item.contentOnly || canViewContent(user)) && (!item.adminOnly || canAdmin(user)));
 
   return (
     <div className="app-shell">
@@ -252,7 +260,7 @@ function AppShell() {
             <strong>{user?.username}</strong>
           </div>
           <div className="topbar-actions">
-            {hasAdminPrivileges(user) && (
+            {canAdmin(user) && (
               <span className="badge">
                 <Shield size={14} />
                 Admin
@@ -267,9 +275,9 @@ function AppShell() {
         <main className="content">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/heroes" element={<HeroesPage />} />
-            <Route path="/missions" element={<MissionsPage />} />
-            <Route path="/users" element={hasAdminPrivileges(user) ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/heroes" element={canViewContent(user) ? <HeroesPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/missions" element={canViewContent(user) ? <MissionsPage /> : <Navigate to="/dashboard" replace />} />
+            <Route path="/users" element={canAdmin(user) ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>
@@ -285,10 +293,11 @@ function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
+    if (!token || !canViewContent(user)) return;
     void Promise.all([
-      api.listHeroes().then(setHeroes),
-      api.listMissions().then(setMissions),
-      hasAdminPrivileges(user) && token ? api.listUsers(token).then(setUsers) : Promise.resolve(),
+      api.listHeroes(token).then(setHeroes),
+      api.listMissions(token).then(setMissions),
+      canAdmin(user) ? api.listUsers(token).then(setUsers) : Promise.resolve(),
     ]);
   }, [token, user]);
 
@@ -301,9 +310,9 @@ function Dashboard() {
         <Metric label="Missions" value={missions.length} to="/missions" />
         <Metric label="Completed" value={completed} to="/missions" />
         <Metric
-          label={hasAdminPrivileges(user) ? "Users" : "Role"}
-          value={hasAdminPrivileges(user) ? users.length : getPrimaryRoleLabel(user)}
-          to={hasAdminPrivileges(user) ? "/users" : undefined}
+          label={canAdmin(user) ? "Users" : "Role"}
+          value={canAdmin(user) ? users.length : getPrimaryRoleLabel(user)}
+          to={canAdmin(user) ? "/users" : undefined}
         />
       </div>
       <section className="panel">
@@ -323,22 +332,25 @@ function Dashboard() {
 
 function HeroesPage() {
   const { token, user } = useAuth();
+  const canEdit = canEditContent(user);
+  const canDelete = canAdmin(user);
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [form, setForm] = useState({ name: "", power: "", age: "" });
   const [editing, setEditing] = useState<Record<number, { name: string; power: string; age: string }>>({});
   const [error, setError] = useState("");
 
   async function loadHeroes() {
-    setHeroes(await api.listHeroes());
+    if (!token) return;
+    setHeroes(await api.listHeroes(token));
   }
 
   useEffect(() => {
     void loadHeroes();
-  }, []);
+  }, [token]);
 
   async function createHero(event: FormEvent) {
     event.preventDefault();
-    if (!token) return;
+    if (!token || !canEdit) return;
     setError("");
     try {
       await api.createHero(token, {
@@ -354,8 +366,12 @@ function HeroesPage() {
   }
 
   async function updateHero(hero: Hero) {
-    if (!token) return;
-    const next = editing[hero.id];
+    if (!token || !canEdit) return;
+    const next = editing[hero.id] ?? {
+      name: hero.name,
+      power: hero.power,
+      age: hero.age?.toString() ?? "",
+    };
     await api.updateHero(token, hero.id, {
       name: next.name,
       power: next.power,
@@ -365,20 +381,22 @@ function HeroesPage() {
   }
 
   async function deleteHero(id: number) {
-    if (!token) return;
+    if (!token || !canDelete) return;
     await api.deleteHero(token, id);
     await loadHeroes();
   }
 
   return (
     <Page title="Heroes" subtitle="Create and maintain the roster.">
-      <form className="panel form-grid" onSubmit={createHero}>
-        <input placeholder="Hero name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required minLength={3} />
-        <input placeholder="Power" value={form.power} onChange={(event) => setForm({ ...form, power: event.target.value })} required minLength={3} />
-        <input placeholder="Age" type="number" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} />
-        <button className="primary-button" type="submit">Create hero</button>
-        {error && <p className="form-error wide">{error}</p>}
-      </form>
+      {canEdit && (
+        <form className="panel form-grid" onSubmit={createHero}>
+          <input placeholder="Hero name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required minLength={3} />
+          <input placeholder="Power" value={form.power} onChange={(event) => setForm({ ...form, power: event.target.value })} required minLength={3} />
+          <input placeholder="Age" type="number" value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} />
+          <button className="primary-button" type="submit">Create hero</button>
+          {error && <p className="form-error wide">{error}</p>}
+        </form>
+      )}
       <div className="resource-grid">
         {heroes.map((hero) => {
           const draft = editing[hero.id] ?? { name: hero.name, power: hero.power, age: hero.age?.toString() ?? "" };
@@ -389,25 +407,29 @@ function HeroesPage() {
                 <h2>{hero.name}</h2>
                 {!editing[hero.id] && <p>{hero.power}</p>}
               </div>
-              <div className="inline-fields">
-                <label>
-                  Name
-                  <input value={draft.name} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, name: event.target.value } })} />
-                </label>
-                <label>
-                  Power
-                  <input value={draft.power} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, power: event.target.value } })} />
-                </label>
-                <label>
-                  Age
-                  <input type="number" value={draft.age} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, age: event.target.value } })} />
-                </label>
-              </div>
+              {canEdit && (
+                <div className="inline-fields">
+                  <label>
+                    Name
+                    <input value={draft.name} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, name: event.target.value } })} />
+                  </label>
+                  <label>
+                    Power
+                    <input value={draft.power} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, power: event.target.value } })} />
+                  </label>
+                  <label>
+                    Age
+                    <input type="number" value={draft.age} onChange={(event) => setEditing({ ...editing, [hero.id]: { ...draft, age: event.target.value } })} />
+                  </label>
+                </div>
+              )}
               <p className="muted">Missions: {hero.mission_ids.length ? hero.mission_ids.join(", ") : "None"}</p>
-              <div className="card-actions">
-                <button className="outline-button" onClick={() => updateHero(hero)}>Save</button>
-                {hasAdminPrivileges(user) && <button className="danger-button" onClick={() => deleteHero(hero.id)}>Delete</button>}
-              </div>
+              {(canEdit || canDelete) && (
+                <div className="card-actions">
+                  {canEdit && <button className="outline-button" onClick={() => updateHero(hero)}>Save</button>}
+                  {canDelete && <button className="danger-button" onClick={() => deleteHero(hero.id)}>Delete</button>}
+                </div>
+              )}
             </article>
           );
         })}
@@ -418,6 +440,8 @@ function HeroesPage() {
 
 function MissionsPage() {
   const { token, user } = useAuth();
+  const canEdit = canEditContent(user);
+  const canDelete = canAdmin(user);
   const [heroes, setHeroes] = useState<Hero[]>([]);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [form, setForm] = useState({ name: "", difficulty: "", hero_id: "", completed: false });
@@ -425,18 +449,19 @@ function MissionsPage() {
   const [error, setError] = useState("");
 
   async function loadData() {
-    const [nextHeroes, nextMissions] = await Promise.all([api.listHeroes(), api.listMissions()]);
+    if (!token) return;
+    const [nextHeroes, nextMissions] = await Promise.all([api.listHeroes(token), api.listMissions(token)]);
     setHeroes(nextHeroes);
     setMissions(nextMissions);
   }
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [token]);
 
   async function createMission(event: FormEvent) {
     event.preventDefault();
-    if (!token) return;
+    if (!token || !canEdit) return;
     setError("");
     try {
       await api.createMission(token, {
@@ -453,13 +478,13 @@ function MissionsPage() {
   }
 
   async function patchMission(id: number, payload: Partial<Mission>) {
-    if (!token) return;
+    if (!token || !canEdit) return;
     await api.updateMission(token, id, payload);
     await loadData();
   }
 
   async function deleteMission(id: number) {
-    if (!token) return;
+    if (!token || !canDelete) return;
     await api.deleteMission(token, id);
     await loadData();
   }
@@ -496,27 +521,29 @@ function MissionsPage() {
 
   return (
     <Page title="Missions" subtitle="Assign work, tune difficulty, and track completion.">
-      <form className="panel form-grid" onSubmit={createMission}>
-        <input placeholder="Mission name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required minLength={5} />
-        <input placeholder="Difficulty" type="number" min={1} max={10} value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value })} required />
-        <select value={form.hero_id} onChange={(event) => setForm({ ...form, hero_id: event.target.value })}>
-          <option value="">Unassigned</option>
-          {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-        </select>
-        <label className="check-label">
-          <input type="checkbox" checked={form.completed} onChange={(event) => setForm({ ...form, completed: event.target.checked })} />
-          Complete
-        </label>
-        <button className="primary-button" type="submit">Create mission</button>
-        {error && <p className="form-error wide">{error}</p>}
-      </form>
+      {canEdit && (
+        <form className="panel form-grid" onSubmit={createMission}>
+          <input placeholder="Mission name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required minLength={5} />
+          <input placeholder="Difficulty" type="number" min={1} max={10} value={form.difficulty} onChange={(event) => setForm({ ...form, difficulty: event.target.value })} required />
+          <select value={form.hero_id} onChange={(event) => setForm({ ...form, hero_id: event.target.value })}>
+            <option value="">Unassigned</option>
+            {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+          </select>
+          <label className="check-label">
+            <input type="checkbox" checked={form.completed} onChange={(event) => setForm({ ...form, completed: event.target.checked })} />
+            Complete
+          </label>
+          <button className="primary-button" type="submit">Create mission</button>
+          {error && <p className="form-error wide">{error}</p>}
+        </form>
+      )}
       <div className="table-panel">
         {missions.map((mission) => {
           const draft = editing[mission.id];
 
           return (
             <div className="table-row" key={mission.id}>
-              {draft ? (
+              {draft && canEdit ? (
                 <>
                   <div className="stack">
                     <label>
@@ -554,22 +581,33 @@ function MissionsPage() {
                     <strong>{mission.name}</strong>
                     <p className="muted">Difficulty {mission.difficulty} | Hero {mission.hero_id ?? "unassigned"}</p>
                   </div>
-                  <label className="check-label">
-                    <input
-                      type="checkbox"
-                      checked={mission.completed}
-                      onChange={(event) => patchMission(mission.id, { completed: event.target.checked })}
-                    />
-                    Complete
-                  </label>
-                  <select value={mission.hero_id ?? ""} onChange={(event) => patchMission(mission.id, { hero_id: event.target.value ? Number(event.target.value) : null })}>
-                    <option value="">Unassigned</option>
-                    {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
-                  </select>
-                  <div className="card-actions">
-                    <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>
-                    {hasAdminPrivileges(user) && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
-                  </div>
+                  {canEdit ? (
+                    <>
+                      <label className="check-label">
+                        <input
+                          type="checkbox"
+                          checked={mission.completed}
+                          onChange={(event) => patchMission(mission.id, { completed: event.target.checked })}
+                        />
+                        Complete
+                      </label>
+                      <select value={mission.hero_id ?? ""} onChange={(event) => patchMission(mission.id, { hero_id: event.target.value ? Number(event.target.value) : null })}>
+                        <option value="">Unassigned</option>
+                        {heroes.map((hero) => <option key={hero.id} value={hero.id}>{hero.name}</option>)}
+                      </select>
+                    </>
+                  ) : (
+                    <>
+                      <p className="muted">{mission.completed ? "Complete" : "In progress"}</p>
+                      <p className="muted">Assigned hero: {mission.hero_id ?? "unassigned"}</p>
+                    </>
+                  )}
+                  {(canEdit || canDelete) && (
+                    <div className="card-actions">
+                      {canEdit && <button className="outline-button" onClick={() => beginEdit(mission)}>Edit</button>}
+                      {canDelete && <button className="danger-button" onClick={() => deleteMission(mission.id)}>Delete</button>}
+                    </div>
+                  )}
                 </>
               )}
             </div>

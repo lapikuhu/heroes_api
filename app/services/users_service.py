@@ -12,6 +12,12 @@ from security import hash_password, verify_password, create_access_token
 from db import AsyncSession
 
 
+def _has_admin_privileges(user: UserIsAdminResponse | User) -> bool:
+    roles = getattr(user, "roles", [])
+    role_names = {role.name if hasattr(role, "name") else role for role in roles}
+    return bool(user.is_admin or "admin" in role_names)
+
+
 async def create_user_service(user_data: UserCreate, session: AsyncSession, cur_user_is_admin: UserIsAdminResponse) -> User:
     """Create a new user. Only admins can create other users.
     Args:
@@ -26,7 +32,7 @@ async def create_user_service(user_data: UserCreate, session: AsyncSession, cur_
     if await users_repo.is_existing_user(user_data.username, session):
         raise ValueError("Username already exists")
     
-    if cur_user_is_admin.is_admin is False:
+    if not _has_admin_privileges(cur_user_is_admin):
         raise ValueError("Only admins can create other admin users")
     else:
         user = User(
@@ -54,7 +60,7 @@ async def update_user_service(user_id: int, user_data: UserUpdate, session: Asyn
     if not user:
         raise ValueError("User not found")
     
-    if cur_user_is_admin.is_admin is False and user.is_admin is True:
+    if not _has_admin_privileges(cur_user_is_admin) and user.is_admin is True:
         raise ValueError("Only admins can update other admin users")
     
     if user_data.username is not None and user_data.username != user.username:
@@ -85,7 +91,7 @@ async def delete_user_service(user_id: int, session: AsyncSession, cur_user_is_a
     if not user:
         raise ValueError("User not found")
     
-    if cur_user_is_admin.is_admin is False and user.is_admin is True:
+    if not _has_admin_privileges(cur_user_is_admin) and user.is_admin is True:
         raise ValueError("Only admins can delete other admin users")
     await users_repo.delete_user(user, session)
     return None
@@ -111,7 +117,7 @@ async def get_all_users_service(session: AsyncSession, cur_user_is_admin: UserIs
     Raises:
         ValueError: If a non-admin tries to list users.
     """
-    if cur_user_is_admin.is_admin is False:
+    if not _has_admin_privileges(cur_user_is_admin):
         raise ValueError("Only admins can list users")
     return await users_repo.get_all_users(session)
 

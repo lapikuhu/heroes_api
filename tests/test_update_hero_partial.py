@@ -3,7 +3,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 async def test_update_hero_partial_can_change_power(app: FastAPI, auth_mock_user):
-    auth_user = await auth_mock_user()
+    auth_user = await auth_mock_user(roles=["editor"])
     token = auth_user["access_token"]
 
     async with AsyncClient(

@@ -102,6 +102,7 @@ Without that environment variable, globally installed plugins such as `langsmith
 
 - Users employ a defense-in-depth pattern: route dependencies check authorization, and user services also perform permission checks.
 - Other resources are simpler: most access control is handled at the route layer.
-- Users can have multiple roles, currently constrained to fixed role names.
+- Users can have multiple roles, currently constrained to fixed role names: `viewer`, `editor`, and `admin`.
+- Viewers can read heroes and missions only. Editors can create and update heroes and missions. Admins have all privileges across users, heroes, and missions.
 - The frontend is intentionally small and demo-oriented; it favors clarity over exhaustive CRUD behavior.
 - Database configuration and default admin credentials are loaded from `.env`.
