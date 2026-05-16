@@ -16,3 +16,11 @@ app/__pycache__/
 
 # plans
 plans/
+
+# docx docs
+/*.docx
+*.docx
+
+# temp files
+*.tmp
+

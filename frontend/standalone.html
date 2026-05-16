@@ -32,6 +32,12 @@
         return user.is_admin ? "Admin" : "Viewer";
       };
 
+      const VALID_VIEWS = ["dashboard", "heroes", "missions", "users"];
+      function getHashView() {
+        const hash = window.location.hash.slice(1);
+        return VALID_VIEWS.includes(hash) ? hash : null;
+      }
+
       async function request(path, options = {}) {
         const headers = new Headers(options.headers || {});
         if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
@@ -74,7 +80,11 @@
       function App() {
         const [token, setToken] = useState(() => localStorage.getItem(tokenKey));
         const [user, setUser] = useState(null);
-        const [view, setView] = useState("dashboard");
+        const [view, setView] = useState(() => getHashView() || "dashboard");
+        const [invalidHash, setInvalidHash] = useState(() => {
+          const hash = window.location.hash.slice(1);
+          return hash && !VALID_VIEWS.includes(hash) ? hash : null;
+        });
         const [loading, setLoading] = useState(Boolean(token));
 
         useEffect(() => {
@@ -93,10 +103,61 @@
             .finally(() => setLoading(false));
         }, [token]);
 
+        function navigateTo(viewName) {
+          window.location.hash = viewName;
+          setView(viewName);
+          setInvalidHash(null);
+        }
+
+        useEffect(() => {
+          function onHashChange() {
+            const hash = window.location.hash.slice(1);
+            if (!hash) {
+              setView("dashboard");
+              setInvalidHash(null);
+              return;
+            }
+            if (!VALID_VIEWS.includes(hash)) {
+              setInvalidHash(hash);
+              return;
+            }
+            if (hash === "users" && !canAdmin(user)) {
+              window.location.hash = "dashboard";
+              setView("dashboard");
+              setInvalidHash(null);
+              return;
+            }
+            if ((hash === "heroes" || hash === "missions") && !canViewContent(user)) {
+              window.location.hash = "dashboard";
+              setView("dashboard");
+              setInvalidHash(null);
+              return;
+            }
+            setView(hash);
+            setInvalidHash(null);
+          }
+          window.addEventListener("hashchange", onHashChange);
+          return () => window.removeEventListener("hashchange", onHashChange);
+        }, [user]);
+
+        useEffect(() => {
+          if (!user) return;
+          if (view === "users" && !canAdmin(user)) {
+            window.location.hash = "dashboard";
+            setView("dashboard");
+            setInvalidHash(null);
+          } else if ((view === "heroes" || view === "missions") && !canViewContent(user)) {
+            window.location.hash = "dashboard";
+            setView("dashboard");
+            setInvalidHash(null);
+          }
+        }, [user]);
+
         function logout() {
           localStorage.removeItem(tokenKey);
           setToken(null);
           setUser(null);
+          window.location.hash = "";
           setView("dashboard");
         }
 
@@ -122,9 +183,9 @@
               </div>
               <nav className="sidebar-nav">
                 {["dashboard", "heroes", "missions"].filter((item) => item === "dashboard" || canViewContent(user)).map((item) => (
-                  <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item}</button>
+                  <button key={item} className={view === item ? "active" : ""} onClick={() => navigateTo(item)}>{item}</button>
                 ))}
-                {canAdmin(user) && <button className={view === "users" ? "active" : ""} onClick={() => setView("users")}>users</button>}
+                {canAdmin(user) && <button className={view === "users" ? "active" : ""} onClick={() => navigateTo("users")}>users</button>}
               </nav>
             </aside>
             <div className="shell-main">
@@ -139,10 +200,16 @@
                 </div>
               </header>
               <main className="content">
-                {view === "dashboard" && <Dashboard token={token} user={user} setView={setView} />}
-                {view === "heroes" && canViewContent(user) && <Heroes token={token} user={user} />}
-                {view === "missions" && canViewContent(user) && <Missions token={token} user={user} />}
-                {view === "users" && canAdmin(user) && <Users token={token} currentUser={user} />}
+                {invalidHash && (
+                  <section className="status-page">
+                    <p className="form-error">Unknown page: &ldquo;{invalidHash}&rdquo;</p>
+                    <button className="primary-button" onClick={() => navigateTo("dashboard")}>Go to dashboard</button>
+                  </section>
+                )}
+                {!invalidHash && view === "dashboard" && <Dashboard token={token} user={user} setView={navigateTo} />}
+                {!invalidHash && view === "heroes" && canViewContent(user) && <Heroes token={token} user={user} />}
+                {!invalidHash && view === "missions" && canViewContent(user) && <Missions token={token} user={user} />}
+                {!invalidHash && view === "users" && canAdmin(user) && <Users token={token} currentUser={user} />}
               </main>
             </div>
           </div>

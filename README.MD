@@ -14,6 +14,10 @@ This is a demo FastAPI project with limited functionality. It is meant to show a
 - A React frontend prototype with login, sidebar navigation, dashboard, heroes, missions, and users views.
 - A standalone browser frontend fallback for Windows environments without Node/npm.
 
+## Github Page
+
+https://github.com/lapikuhu/heroes_api
+
 ## Backend
 
 ### *Authored by codex.*
