@@ -1,0 +1,11 @@
+###--- Setup JWT configuration globals
+SECRET_KEY = "super-super-secret-key"
+ALGORITHM = "HS256"
+
+# PostgreSQL connection settings
+DATABASE_URL = "your-database-url-here"
+
+# dev admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_EMAIL = "admin@heroefastapi.gr"
+ADMIN_PASSWORD = "admin123"
