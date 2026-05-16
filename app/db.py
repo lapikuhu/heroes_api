@@ -7,19 +7,20 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from models.user_roles import Role
 from models.users import User
 from security import get_password_hash
-from config import DATABASE_URL
-from config import ADMIN_USERNAME, ADMIN_PASSWORD
-from config import FIXED_ROLES
+from config import settings
 
-
-ASYNC_DATABASE_URL = DATABASE_URL.replace(
+ASYNC_DATABASE_URL = settings.DATABASE_URL.replace(
     "postgresql://",
     "postgresql+asyncpg://",
     1,
 )
 
 engine = create_async_engine(
-    ASYNC_DATABASE_URL,
+    settings.DATABASE_URL.replace(
+        "postgresql://",
+        "postgresql+asyncpg://",
+        1,
+    ),
     echo=False,
     pool_size=20, # Max number of connections in the pool
     max_overflow=2, # Max number of connections that can be created beyond the pool_size
@@ -40,7 +41,7 @@ async def seed_roles_if_not_exist():
         None
     """
     async with AsyncSessionLocal() as session:
-        for role_name in FIXED_ROLES:
+        for role_name in settings.FIXED_ROLES:
             result = await session.exec(select(Role).where(Role.name == role_name))
             exists = result.first()
             if not exists:
@@ -58,8 +59,8 @@ async def create_admin_if_not_exists():
         admin_user = result.first()
         if not admin_user:
             admin_user = User(
-                username=ADMIN_USERNAME,
-                hashed_password=get_password_hash(ADMIN_PASSWORD),
+                username=settings.ADMIN_USERNAME,
+                hashed_password=get_password_hash(settings.ADMIN_PASSWORD),
                 is_admin=True,
                 roles=[Role(name="admin")]
             )

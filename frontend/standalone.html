@@ -31,7 +31,7 @@
         if (user.roles?.length) return user.roles.join(", ");
         return user.is_admin ? "Admin" : "Viewer";
       };
-<!-- Hash-based routing-->
+// Hash-based routing
       const VALID_VIEWS = ["dashboard", "heroes", "missions", "users"];
       function getHashView() {
         const hash = window.location.hash.slice(1);

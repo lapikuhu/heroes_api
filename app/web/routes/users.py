@@ -16,8 +16,8 @@ from typing import Annotated
 # Local imports
 from dependencies import CurrentUser, SessionDep, AdminUser, get_admin_user, get_current_user
 from schemas.users import UserCreate, UserRead, UserCreatedResponse, UserUpdate
-
 from services import users_service
+from config import settings
 
 # Define the router for user-related endpoints
 router = APIRouter(prefix="/users", tags=["users"])

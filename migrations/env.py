@@ -16,7 +16,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from app.config import DATABASE_URL  # noqa: E402
+from app.config import DATABASE_URL, settings  # noqa: E402
+DATABASE_URL = settings.DATABASE_URL
 
 # Import all table models so SQLModel.metadata is fully populated.
 from app.models.heroes import Hero  # noqa: F401,E402

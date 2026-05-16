@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta, timezone
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from config import settings
 from fastapi.security import OAuth2PasswordBearer
 
 # Setup password hashing context using passlib
@@ -34,8 +34,8 @@ def create_access_token(sub: str) -> str:
         sub (str): The subject (usually user ID) for the token.
     Returns:
         str: The encoded JWT token."""
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode({"sub": sub, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode({"sub": sub, "exp": expire}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 def decode_access_token(token: str) -> dict:
     """Decode a JWT access token.
@@ -43,7 +43,7 @@ def decode_access_token(token: str) -> dict:
         token (str): The JWT token to decode.
     Returns:
         dict: The decoded token payload."""
-    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
 def  get_password_hash(password: str) -> str:
     """Get the hashed password for a given raw password.

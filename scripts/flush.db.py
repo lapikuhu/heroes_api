@@ -1,4 +1,5 @@
-from app.config import DATABASE_URL
+from app.config import settings
+DATABASE_URL = settings.DATABASE_URL
 
 # Script to delete all data from the database. Use with caution!
 from app.db import engine, AsyncSessionLocal

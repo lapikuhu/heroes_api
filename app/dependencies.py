@@ -5,8 +5,21 @@ from security import oauth2_scheme
 from collections.abc import Callable
 from typing import Annotated
 from fastapi import Depends, HTTPException
+from functools import lru_cache
+from config import Settings
 
-# Dependency for getting a database session
+
+
+# --------------- SETTINGS DEPENDENCY ---------------
+# Never actually used as our routes never expose the settings. Only for
+# demonstrating how to use lru_cache to create a singleton settings instance.
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+# --------------- DATABASE DEPENDENCY ---------------
+
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 TokenDep = Annotated[str, Depends(oauth2_scheme)]
 
@@ -25,9 +38,9 @@ async def get_current_user(token: TokenDep, session: SessionDep) -> User:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     return user
 
-# Create the current user dependency for FastAPI routes
-CurrentUser = Annotated[User, Depends(get_current_user)]
+# --------------- USER DEPENDENCIES ---------------
 
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 def get_user_role_names(user: User) -> set[str]:
     """Return the user's role names as a normalized set."""
@@ -79,7 +92,7 @@ EditorUser = Annotated[User, Depends(get_editor_user)]
 AdminUser = Annotated[User, Depends(get_admin_user)]
 
 
-# --- PAGINATION DEPENDENCY ---
+# --------------- PAGINATION DEPENDENCY ---------------
 
 def pagination(skip: int = 0, limit: int = 20) -> dict:
     """Reusable pagination dependency.

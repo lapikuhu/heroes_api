@@ -3,7 +3,7 @@
 # They are not used for database models.
 from sqlmodel import SQLModel, Field
 from pydantic import field_validator
-from config import FIXED_ROLES
+from config import settings
 
 class UserCreate(SQLModel):
     username: str = Field(index=True, title="Username of the user", min_length=3)
@@ -14,9 +14,9 @@ class UserCreate(SQLModel):
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, v: list[str]) -> list[str]:
-        invalid = set(v) - set(FIXED_ROLES)
+        invalid = set(v) - set(settings.FIXED_ROLES)
         if invalid:
-            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {settings.FIXED_ROLES}")
         return v
 
 class UserDelete(SQLModel):
@@ -32,9 +32,9 @@ class UserUpdate(SQLModel):
     def validate_roles(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return v
-        invalid = set(v) - set(FIXED_ROLES)
+        invalid = set(v) - set(settings.FIXED_ROLES)
         if invalid:
-            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {settings.FIXED_ROLES}")
         return v
 
 class UserGetByUsername(SQLModel):
@@ -60,9 +60,9 @@ class UserRead(SQLModel):
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, v: list[str]) -> list[str]:
-        invalid = set(v) - set(FIXED_ROLES)
+        invalid = set(v) - set(settings.FIXED_ROLES)
         if invalid:
-            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {settings.FIXED_ROLES}")
         return v
 
 class UserCreatedResponse(SQLModel):
@@ -76,9 +76,9 @@ class UserRolesResponse(SQLModel):
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, v: list[str]) -> list[str]:
-        invalid = set(v) - set(FIXED_ROLES)
+        invalid = set(v) - set(settings.FIXED_ROLES)
         if invalid:
-            raise ValueError(f"Invalid roles: {invalid}. Allowed: {FIXED_ROLES}")
+            raise ValueError(f"Invalid roles: {invalid}. Allowed: {settings.FIXED_ROLES}")
         return v
 
 class UserIsAdminResponse(SQLModel):
