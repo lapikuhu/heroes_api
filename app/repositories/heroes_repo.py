@@ -56,7 +56,7 @@ async def update_hero(hero_id: int, hero_data: Hero, session: Session) -> Hero |
     hero = await session.get(Hero, hero_id)
     if not hero:
         return None
-    for key, value in hero_data.dict(exclude_unset=True).items():
+    for key, value in hero_data.model_dump(exclude_unset=True).items():
         setattr(hero, key, value)
     try:
         session.add(hero)

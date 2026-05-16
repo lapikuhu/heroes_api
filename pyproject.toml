@@ -35,9 +35,6 @@ dev = [
 [project.scripts]
 heroes-api = "main:app"
 
-[tool.fastapi]
-app.main:app
-
 [tool.heroes_api]
 fastapi_app = "main:app"
 fastapi_main = "app/main.py"

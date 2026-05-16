@@ -116,16 +116,17 @@ After login, the page switches dashboard by role:
 
 ## Tests
 
-Run tests from the repository root, not from `app`.
-
-If your global Python environment has unrelated pytest plugins installed, disable plugin autoloading:
+If your global Python environment has unrelated pytest plugins installed, disable plugin autoloading first:
 
 ```powershell
 $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD="1"
-.\.venv\Scripts\python.exe -m pytest -p pytest_asyncio tests -v
 ```
 
-Without that environment variable, globally installed plugins such as `langsmith` may load automatically and fail before this project's tests are collected.
+Run tests from the repository root, not from `app`.
+```powershell
+pytest tests -v
+```
+
 
 ## Notes
 
