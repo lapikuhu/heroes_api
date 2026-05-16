@@ -85,6 +85,35 @@ http://127.0.0.1:5173/standalone.html
 
 This standalone page loads React from a CDN in the browser, so it still needs internet access unless those scripts are cached.
 
+## Gradio Frontend
+
+The additional Gradio frontend lives in `gradio_app/`. It is a separate frontend and does not run from `app/main.py`.
+
+Start the FastAPI backend first:
+
+```powershell
+cd app
+uvicorn main:app --reload
+```
+
+Direct gradio script execution from repo main:
+
+```powershell
+python.exe gradio_app\app.py
+```
+
+The Gradio page defaults to the API at:
+
+```text
+http://127.0.0.1:8000
+```
+
+After login, the page switches dashboard by role:
+
+- Viewer-only users can view heroes and missions.
+- Editors who are not admins can view, create, and update heroes and missions.
+- Admins can manage users, heroes, and missions.
+
 ## Tests
 
 Run tests from the repository root, not from `app`.
