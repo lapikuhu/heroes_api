@@ -16,6 +16,48 @@ except ImportError:
 
 ROLE_OPTIONS = ["admin", "editor", "viewer"]
 
+APP_CSS = """
+.login-panel {
+    max-width: 460px;
+    margin: 32px auto 24px;
+}
+
+.resource-section {
+    margin-bottom: 18px;
+    box-shadow: 0 18px 0 #bfbfbf;
+}
+
+.dashboard-panel {
+    padding: 16px;
+    border-radius: 10px;
+}
+
+.action-section {
+    margin-top: 18px;
+    padding: 16px;
+    border: none;
+    border-radius: 10px;
+    background: var(--block-background-fill);
+    box-shadow: 0 -18px 0 var(--block-background-fill);
+}
+
+.action-section > .styler,
+.action-section > .block {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.action-section h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.danger-section {
+    background: var(--block-background-fill);
+    border: none;
+}
+"""
+
 
 def _safe_int(value: Any) -> int | None:
     if value in (None, ""):
@@ -312,14 +354,14 @@ def delete_user(base_url: str, token: str, current_user: dict[str, Any], user_id
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="Heroes API Gradio Admin") as demo:
+    with gr.Blocks(title="Heroes API Gradio Admin", css=APP_CSS) as demo:
         token_state = gr.State(None)
         user_state = gr.State(None)
 
         gr.Markdown("# Heroes API")
         status = gr.Markdown("Sign in to open your role-based dashboard.")
 
-        with gr.Group() as login_panel:
+        with gr.Group(elem_classes="login-panel") as login_panel:
             api_base_url = gr.Textbox(label="API base URL", value=api.DEFAULT_API_BASE_URL)
             username = gr.Textbox(label="Username")
             password = gr.Textbox(label="Password", type="password")
@@ -332,105 +374,138 @@ def build_app() -> gr.Blocks:
         mission_headers = ["ID", "Name", "Difficulty", "Completed", "Hero ID"]
         user_headers = ["ID", "Username", "Admin", "Roles"]
 
-        with gr.Group(visible=False) as viewer_dashboard:
+        with gr.Group(visible=False, elem_classes="dashboard-panel") as viewer_dashboard:
             gr.Markdown("## Viewer Dashboard")
             with gr.Tabs():
                 with gr.Tab("Heroes"):
-                    viewer_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
-                    viewer_refresh_heroes = gr.Button("Refresh heroes")
+                    with gr.Group(elem_classes="resource-section"):
+                        viewer_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
+                        viewer_refresh_heroes = gr.Button("Refresh heroes")
                 with gr.Tab("Missions"):
-                    viewer_missions = gr.Dataframe(headers=mission_headers, interactive=False)
-                    viewer_mission_hero_id = gr.Dropdown(label="Assigned hero", visible=False)
-                    viewer_refresh_missions = gr.Button("Refresh missions")
+                    with gr.Group(elem_classes="resource-section"):
+                        viewer_missions = gr.Dataframe(headers=mission_headers, interactive=False)
+                        viewer_mission_hero_id = gr.Dropdown(label="Assigned hero", visible=False)
+                        viewer_refresh_missions = gr.Button("Refresh missions")
 
-        with gr.Group(visible=False) as editor_dashboard:
+        with gr.Group(visible=False, elem_classes="dashboard-panel") as editor_dashboard:
             gr.Markdown("## Editor Dashboard")
             with gr.Tabs():
                 with gr.Tab("Heroes"):
-                    editor_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
-                    editor_refresh_heroes = gr.Button("Refresh heroes")
-                    with gr.Row():
-                        hero_name = gr.Textbox(label="New hero name")
-                        hero_power = gr.Textbox(label="Power")
-                        hero_age = gr.Number(label="Age", precision=0)
-                    editor_create_hero = gr.Button("Create hero", variant="primary")
-                    with gr.Row():
-                        edit_hero_id = gr.Number(label="Hero ID", precision=0)
-                        edit_hero_name = gr.Textbox(label="Name")
-                        edit_hero_power = gr.Textbox(label="Power")
-                        edit_hero_age = gr.Number(label="Age", precision=0)
-                    editor_update_hero = gr.Button("Update hero")
+                    with gr.Group(elem_classes="resource-section"):
+                        editor_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
+                        editor_refresh_heroes = gr.Button("Refresh heroes")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Create hero")
+                        with gr.Row():
+                            hero_name = gr.Textbox(label="New hero name")
+                            hero_power = gr.Textbox(label="Power")
+                            hero_age = gr.Number(label="Age", precision=0)
+                        editor_create_hero = gr.Button("Create hero", variant="primary")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Update hero")
+                        with gr.Row():
+                            edit_hero_id = gr.Number(label="Hero ID", precision=0)
+                            edit_hero_name = gr.Textbox(label="Name")
+                            edit_hero_power = gr.Textbox(label="Power")
+                            edit_hero_age = gr.Number(label="Age", precision=0)
+                        editor_update_hero = gr.Button("Update hero")
                 with gr.Tab("Missions"):
-                    editor_missions = gr.Dataframe(headers=mission_headers, interactive=False)
-                    editor_mission_hero_id = gr.Dropdown(label="Assigned hero")
-                    editor_refresh_missions = gr.Button("Refresh missions")
-                    with gr.Row():
-                        mission_name = gr.Textbox(label="New mission name")
-                        mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
-                        mission_completed = gr.Checkbox(label="Completed")
-                    editor_create_mission = gr.Button("Create mission", variant="primary")
-                    with gr.Row():
-                        edit_mission_id = gr.Number(label="Mission ID", precision=0)
-                        edit_mission_name = gr.Textbox(label="Name")
-                        edit_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
-                        edit_mission_completed = gr.Checkbox(label="Completed")
-                        edit_mission_hero_id = gr.Dropdown(label="Assigned hero")
-                    editor_update_mission = gr.Button("Update mission")
+                    with gr.Group(elem_classes="resource-section"):
+                        editor_missions = gr.Dataframe(headers=mission_headers, interactive=False)
+                        editor_refresh_missions = gr.Button("Refresh missions")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Create mission")
+                        editor_mission_hero_id = gr.Dropdown(label="Assigned hero")
+                        with gr.Row():
+                            mission_name = gr.Textbox(label="New mission name")
+                            mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
+                            mission_completed = gr.Checkbox(label="Completed")
+                        editor_create_mission = gr.Button("Create mission", variant="primary")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Update mission")
+                        with gr.Row():
+                            edit_mission_id = gr.Number(label="Mission ID", precision=0)
+                            edit_mission_name = gr.Textbox(label="Name")
+                            edit_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
+                            edit_mission_completed = gr.Checkbox(label="Completed")
+                            edit_mission_hero_id = gr.Dropdown(label="Assigned hero")
+                        editor_update_mission = gr.Button("Update mission")
 
-        with gr.Group(visible=False) as admin_dashboard:
+        with gr.Group(visible=False, elem_classes="dashboard-panel") as admin_dashboard:
             gr.Markdown("## Admin Dashboard")
             with gr.Tabs():
                 with gr.Tab("Users"):
-                    admin_users = gr.Dataframe(headers=user_headers, interactive=False)
-                    admin_refresh_users = gr.Button("Refresh users")
-                    with gr.Row():
-                        new_username = gr.Textbox(label="Username")
-                        new_password = gr.Textbox(label="Password", type="password")
-                        new_is_admin = gr.Checkbox(label="Admin")
-                        new_roles = gr.CheckboxGroup(label="Roles", choices=ROLE_OPTIONS, value=["viewer"])
-                    admin_create_user = gr.Button("Create user", variant="primary")
-                    with gr.Row():
-                        edit_user_id = gr.Number(label="User ID", precision=0)
-                        edit_username = gr.Textbox(label="Username")
-                        edit_is_admin = gr.Checkbox(label="Admin")
-                        edit_roles = gr.CheckboxGroup(label="Roles", choices=ROLE_OPTIONS)
-                    admin_update_user = gr.Button("Update user")
-                    delete_user_id = gr.Number(label="User ID to delete", precision=0)
-                    admin_delete_user = gr.Button("Delete user", variant="stop")
+                    with gr.Group(elem_classes="resource-section"):
+                        admin_users = gr.Dataframe(headers=user_headers, interactive=False)
+                        admin_refresh_users = gr.Button("Refresh users")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Create user")
+                        with gr.Row():
+                            new_username = gr.Textbox(label="Username")
+                            new_password = gr.Textbox(label="Password", type="password")
+                            new_is_admin = gr.Checkbox(label="Admin")
+                            new_roles = gr.CheckboxGroup(label="Roles", choices=ROLE_OPTIONS, value=["viewer"])
+                        admin_create_user = gr.Button("Create user", variant="primary")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Update user")
+                        with gr.Row():
+                            edit_user_id = gr.Number(label="User ID", precision=0)
+                            edit_username = gr.Textbox(label="Username")
+                            edit_is_admin = gr.Checkbox(label="Admin")
+                            edit_roles = gr.CheckboxGroup(label="Roles", choices=ROLE_OPTIONS)
+                        admin_update_user = gr.Button("Update user")
+                    with gr.Group(elem_classes=["action-section", "danger-section"]):
+                        gr.Markdown("### Delete user")
+                        delete_user_id = gr.Number(label="User ID to delete", precision=0)
+                        admin_delete_user = gr.Button("Delete user", variant="stop")
                 with gr.Tab("Heroes"):
-                    admin_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
-                    admin_refresh_heroes = gr.Button("Refresh heroes")
-                    with gr.Row():
-                        admin_hero_name = gr.Textbox(label="New hero name")
-                        admin_hero_power = gr.Textbox(label="Power")
-                        admin_hero_age = gr.Number(label="Age", precision=0)
-                    admin_create_hero = gr.Button("Create hero", variant="primary")
-                    with gr.Row():
-                        admin_edit_hero_id = gr.Number(label="Hero ID", precision=0)
-                        admin_edit_hero_name = gr.Textbox(label="Name")
-                        admin_edit_hero_power = gr.Textbox(label="Power")
-                        admin_edit_hero_age = gr.Number(label="Age", precision=0)
-                    admin_update_hero = gr.Button("Update hero")
-                    admin_delete_hero_id = gr.Number(label="Hero ID to delete", precision=0)
-                    admin_delete_hero = gr.Button("Delete hero", variant="stop")
+                    with gr.Group(elem_classes="resource-section"):
+                        admin_heroes = gr.Dataframe(headers=hero_headers, interactive=False)
+                        admin_refresh_heroes = gr.Button("Refresh heroes")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Create hero")
+                        with gr.Row():
+                            admin_hero_name = gr.Textbox(label="New hero name")
+                            admin_hero_power = gr.Textbox(label="Power")
+                            admin_hero_age = gr.Number(label="Age", precision=0)
+                        admin_create_hero = gr.Button("Create hero", variant="primary")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Update hero")
+                        with gr.Row():
+                            admin_edit_hero_id = gr.Number(label="Hero ID", precision=0)
+                            admin_edit_hero_name = gr.Textbox(label="Name")
+                            admin_edit_hero_power = gr.Textbox(label="Power")
+                            admin_edit_hero_age = gr.Number(label="Age", precision=0)
+                        admin_update_hero = gr.Button("Update hero")
+                    with gr.Group(elem_classes=["action-section", "danger-section"]):
+                        gr.Markdown("### Delete hero")
+                        admin_delete_hero_id = gr.Number(label="Hero ID to delete", precision=0)
+                        admin_delete_hero = gr.Button("Delete hero", variant="stop")
                 with gr.Tab("Missions"):
-                    admin_missions = gr.Dataframe(headers=mission_headers, interactive=False)
-                    admin_mission_hero_id = gr.Dropdown(label="Assigned hero")
-                    admin_refresh_missions = gr.Button("Refresh missions")
-                    with gr.Row():
-                        admin_mission_name = gr.Textbox(label="New mission name")
-                        admin_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
-                        admin_mission_completed = gr.Checkbox(label="Completed")
-                    admin_create_mission = gr.Button("Create mission", variant="primary")
-                    with gr.Row():
-                        admin_edit_mission_id = gr.Number(label="Mission ID", precision=0)
-                        admin_edit_mission_name = gr.Textbox(label="Name")
-                        admin_edit_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
-                        admin_edit_mission_completed = gr.Checkbox(label="Completed")
-                        admin_edit_mission_hero_id = gr.Dropdown(label="Assigned hero")
-                    admin_update_mission = gr.Button("Update mission")
-                    admin_delete_mission_id = gr.Number(label="Mission ID to delete", precision=0)
-                    admin_delete_mission = gr.Button("Delete mission", variant="stop")
+                    with gr.Group(elem_classes="resource-section"):
+                        admin_missions = gr.Dataframe(headers=mission_headers, interactive=False)
+                        admin_refresh_missions = gr.Button("Refresh missions")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Create mission")
+                        admin_mission_hero_id = gr.Dropdown(label="Assigned hero")
+                        with gr.Row():
+                            admin_mission_name = gr.Textbox(label="New mission name")
+                            admin_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
+                            admin_mission_completed = gr.Checkbox(label="Completed")
+                        admin_create_mission = gr.Button("Create mission", variant="primary")
+                    with gr.Group(elem_classes="action-section"):
+                        gr.Markdown("### Update mission")
+                        with gr.Row():
+                            admin_edit_mission_id = gr.Number(label="Mission ID", precision=0)
+                            admin_edit_mission_name = gr.Textbox(label="Name")
+                            admin_edit_mission_difficulty = gr.Number(label="Difficulty", value=1, precision=0)
+                            admin_edit_mission_completed = gr.Checkbox(label="Completed")
+                            admin_edit_mission_hero_id = gr.Dropdown(label="Assigned hero")
+                        admin_update_mission = gr.Button("Update mission")
+                    with gr.Group(elem_classes=["action-section", "danger-section"]):
+                        gr.Markdown("### Delete mission")
+                        admin_delete_mission_id = gr.Number(label="Mission ID to delete", precision=0)
+                        admin_delete_mission = gr.Button("Delete mission", variant="stop")
 
         login_button.click(
             login_user,
